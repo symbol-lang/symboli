@@ -8,8 +8,8 @@ interface IAnimal {
     age: int,
     alive: bool,
     methods: {
-        say: (),
-        die: (any)
+        say: (IAnimal),
+        die: (IAnimal, any)
     }
 }
 
@@ -19,6 +19,7 @@ const dog: IAnimal = {
     age = 2,
     alive = true,
     methods = {
+        // Вызовется ошибка, так как в IAnimal методы say и die имеют не равное кол-во аргументов
         say = (this) {
             console.writeln("${this.name} says bark!")
         },

@@ -61,7 +61,7 @@ Value* builtin_string_uppercase(Value** args, int n);
 Value* builtin_string_trim(Value** args, int n);
 Value* builtin_string_split(Value** args, int n);
 Value* builtin_string_is_bool(Value** args, int n);
-Value* builtin_string_is_integer(Value** args, int n);
+Value* builtin_string_is_int(Value** args, int n);
 Value* builtin_string_is_float(Value** args, int n);
 
 Value* builtin_type_of(Value** args, int n);

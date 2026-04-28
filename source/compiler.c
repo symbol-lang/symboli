@@ -279,6 +279,8 @@ static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 	Compiler sub_c;
 	compiler_init(&sub_c, sub, parent->filename);
 	compile_sequence(&sub_c, ast->u.lambda.body, ast->u.lambda.body_count);
+	chunk_emit(sub, OP_POP, 0, 0, 0, 0);
+	chunk_emit(sub, OP_NULL, 0, 0, 0, 0);
 	chunk_emit(sub, OP_RETURN, 0, 0, 0, 0);
 
 	return sub;

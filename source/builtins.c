@@ -781,7 +781,7 @@ Value* builtin_string_is_bool(Value** args, int n) {
 	return make_bool(strcmp(s, "true") == 0 || strcmp(s, "false") == 0);
 }
 
-Value* builtin_string_is_integer(Value** args, int n) {
+Value* builtin_string_is_int(Value** args, int n) {
 	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
 		|| args[0]->type->u.basic != BASIC_STRING)
 		return make_bool(0);
@@ -1198,10 +1198,10 @@ Env* make_builtin_exports(void) {
 	{
 		Type* bool3 = make_basic(BASIC_BOOL);
 		Type* _p[] = { str3 };
-		strf[strfc].name = strdup("is_integer");
-		strf[strfc].value = make_builtin_closure(builtin_string_is_integer,
+		strf[strfc].name = strdup("is_int");
+		strf[strfc].value = make_builtin_closure(builtin_string_is_int,
 												 make_func(bool3, _p, 1));
-		strif[strfc].name = strdup("is_integer");
+		strif[strfc].name = strdup("is_int");
 		strif[strfc].type = strf[strfc].value->type;
 		strfc++;
 	}
@@ -1225,8 +1225,7 @@ Env* make_builtin_exports(void) {
 	InterfaceField* type_iface_fields = malloc(1 * sizeof(InterfaceField));
 	type_fields[0].name = strdup("of");
 	type_fields[0].value = make_builtin_closure(
-		builtin_type_of,
-		make_func(make_basic(BASIC_STRING), type_any, 1));
+		builtin_type_of, make_func(make_basic(BASIC_STRING), type_any, 1));
 	type_iface_fields[0].name = strdup("of");
 	type_iface_fields[0].type = type_fields[0].value->type;
 	Type* type_type = make_interface(NULL, type_iface_fields, 1);

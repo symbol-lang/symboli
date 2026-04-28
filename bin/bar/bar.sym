@@ -1,0 +1,8 @@
+import { console } from "symbol"
+
+var bar = (value: any) {
+}
+
+var foo = bar("error!")
+
+export { foo }

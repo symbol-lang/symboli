@@ -1,0 +1,32 @@
+import { console } from "symbol"
+
+interface IServer {
+    listen: null (int),
+}
+
+interface IServerConfig {
+    foo: bool,
+}
+
+interface IServerCreator {
+    create: IServer (IServerConfig | null),
+}
+
+const serverCreator: IServerCreator = {
+    create = (config: IServerConfig | null = null) {
+        console.writeln("config:", config)
+
+        const server: IServer = {
+            listen = (port) {
+                console.writeln("Server listening to the port:", port)
+            }
+        }
+
+        // Даже несмотря на то, что return нету, функция все равно возвращает
+        // значение, а именно последнюю переменную, зачем-то.
+        // const foo = 42
+        return server
+    }
+}
+
+export { serverCreator }

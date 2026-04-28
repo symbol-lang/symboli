@@ -1,0 +1,5 @@
+import { serverCreator } from "./server/index.sym"
+
+const server = serverCreator.create()
+
+server.listen(3000)

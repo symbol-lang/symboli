@@ -1315,9 +1315,10 @@ void chunk_disassemble(const Chunk* ch, const char* label, int depth) {
 static const char* g_filename = NULL;
 
 void eval_set_filename(const char* filename) {
-	g_filename = filename;
 	if (!g_vm) g_vm = vm_new();
-	g_vm->filename = filename;
+	free((char*)g_vm->filename);
+	g_vm->filename = filename ? strdup(filename) : NULL;
+	g_filename = g_vm->filename;
 }
 
 Value* eval(AST* ast, Env** env) {

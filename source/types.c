@@ -140,11 +140,16 @@ int type_is_assignable(const Type* expected, const Type* actual) {
 	}
 
 	if (expected->kind == TYPE_FUNC && actual->kind == TYPE_FUNC) {
-		/* A function with no explicit return type (ret=NULL) is compatible
-		   with any function type of the same parameter count. */
-		if (!actual->u.func.ret) return 1;
-		if (!expected->u.func.ret) return 1;
-		return type_equals(expected, actual);
+		/* Always check parameter count first. */
+		if (expected->u.func.param_count != actual->u.func.param_count) return 0;
+		for (int i = 0; i < expected->u.func.param_count; i++) {
+			if (!type_is_assignable(expected->u.func.params[i],
+									actual->u.func.params[i]))
+				return 0;
+		}
+		/* Skip return-type check when either side has no explicit return type. */
+		if (!actual->u.func.ret || !expected->u.func.ret) return 1;
+		return type_is_assignable(expected->u.func.ret, actual->u.func.ret);
 	}
 
 	if (expected->kind == TYPE_ARRAY && actual->kind == TYPE_ARRAY) {
@@ -261,14 +266,11 @@ char* type_assignability_error(const Type* expected, const Type* actual) {
 				return dup_cstr(buf);
 			}
 			if (!type_is_assignable(f->type, af)) {
-				char* exp = type_to_string(f->type);
-				char* got = type_to_string(af);
-				size_t sz = strlen(f->name) + strlen(exp) + strlen(got) + 32;
+				char* inner = type_assignability_error(f->type, af);
+				size_t sz = strlen(f->name) + strlen(inner) + 16;
 				char* buf = malloc(sz);
-				snprintf(buf, sz, "field '%s': expected %s, got %s",
-						 f->name, exp, got);
-				free(exp);
-				free(got);
+				snprintf(buf, sz, "field '%s': %s", f->name, inner);
+				free(inner);
 				return buf;
 			}
 		}

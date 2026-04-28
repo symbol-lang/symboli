@@ -142,6 +142,8 @@ static int execute_module(const char* module_path, ModuleCache** cache,
 				free(code);
 				return 0;
 			}
+			free(resolved_path);
+			eval_set_filename(module_path);
 
 			for (int j = 0; j < stmt->u.import_decl.name_count; j++) {
 				const char* name = stmt->u.import_decl.names[j];
@@ -151,7 +153,6 @@ static int execute_module(const char* module_path, ModuleCache** cache,
 							"Runtime error: module '%s' does not export '%s'\n",
 							stmt->u.import_decl.source,
 							name);
-					free(resolved_path);
 					free(module_dir);
 					free(code);
 					return 0;
@@ -159,7 +160,6 @@ static int execute_module(const char* module_path, ModuleCache** cache,
 				env = env_add(env, (char*)name, imported);
 			}
 
-			free(resolved_path);
 			continue;
 		}
 

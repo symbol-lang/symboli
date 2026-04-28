@@ -1,0 +1,14 @@
+import { console, type } from "symbol"
+
+var bar: bool | int (any) = (value: any) {
+
+    if (value == "42") {
+        return false
+    }
+
+    return 0
+}
+
+console.writeln(bar("42"))
+console.writeln(bar(0))
+console.writeln(type.of(bar))

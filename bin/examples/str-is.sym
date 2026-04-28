@@ -1,0 +1,5 @@
+import { string, console } from "symbol"
+
+console.writeln("is_bool", string.is_bool("false"))
+console.writeln("is_int", string.is_int("3.14"))
+console.writeln("is_float", string.is_float("3.14"))
