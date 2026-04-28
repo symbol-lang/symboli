@@ -30,6 +30,7 @@ static int cur_col;
 static NamedType* named_types;
 static int named_type_count;
 static int parse_failed;
+static int error_count;
 static int block_depth;
 
 #define BINARY_AND	   260
@@ -69,6 +70,7 @@ static void skip_ws(void);
 static int match(const char* s);
 static char* parse_identifier(void);
 static void parse_error(const char* fmt, ...);
+static void sync_to_next_statement(void);
 static Type* parse_type(void);
 static int is_valid_statement(AST* stmt);
 static Type* parse_type(void);
@@ -250,8 +252,8 @@ static void source_line_snippet(int line_num, int col, char* out, int maxlen) {
 }
 
 static void parse_error(const char* fmt, ...) {
-	if (parse_failed) return;
 	parse_failed = 1;
+	error_count++;
 
 	char message[256];
 	va_list args;
@@ -264,6 +266,37 @@ static void parse_error(const char* fmt, ...) {
 			cur_line,
 			cur_col,
 			message);
+}
+
+/* Used inside blocks: stops at '}' so we don't consume the block closer. */
+static void sync_to_next_statement(void) {
+	parse_failed = 0;
+	while (pos < length) {
+		if (src[pos] == '}') return;
+		if (src[pos] == '\n') {
+			pos++;
+			cur_line++;
+			cur_col = 1;
+			return;
+		}
+		pos++;
+		cur_col++;
+	}
+}
+
+/* Used at the top level: always advances past the current line (including '}').
+   Without this, a stray '}' at column 0 would loop forever. */
+static void sync_to_next_line(void) {
+	parse_failed = 0;
+	while (pos < length && src[pos] != '\n') {
+		pos++;
+		cur_col++;
+	}
+	if (pos < length) {
+		pos++;
+		cur_line++;
+		cur_col = 1;
+	}
 }
 
 static int is_valid_statement(AST* stmt) {
@@ -777,11 +810,12 @@ static AST* parse_block(void) {
 		if (pos >= length || starts_with("}")) break;
 		AST* stmt = parse_statement();
 		if (!stmt) {
-			block_depth--;
-			if (parse_failed) return NULL;
-			parse_error("Unexpected token '%c' in block",
-						pos < length ? src[pos] : '?');
-			return NULL;
+			if (!parse_failed)
+				parse_error("Unexpected token '%c' in block",
+							pos < length ? src[pos] : '?');
+			sync_to_next_statement();
+			if (pos >= length || starts_with("}")) break;
+			continue;
 		}
 		body = realloc(body, sizeof(AST*) * (size_t)(body_count + 1));
 		body[body_count++] = stmt;
@@ -1494,7 +1528,11 @@ static AST* parse_lambda_body(char** param_names, Type** param_types,
 		skip_ws();
 		if (pos >= length || src[pos] == '}') break;
 		AST* stmt = parse_statement();
-		if (!stmt) break;
+		if (!stmt) {
+			sync_to_next_statement();
+			if (pos >= length || src[pos] == '}') break;
+			continue;
+		}
 		body = realloc(body, sizeof(AST*) * (size_t)(body_count + 1));
 		body[body_count++] = stmt;
 	}
@@ -2226,6 +2264,7 @@ AST* parse_program(const char* code) {
 	named_types = NULL;
 	named_type_count = 0;
 	parse_failed = 0;
+	error_count = 0;
 	block_depth = 0;
 
 	AST** body = NULL;
@@ -2234,12 +2273,17 @@ AST* parse_program(const char* code) {
 		skip_ws();
 		if (pos >= length) break;
 		AST* stmt = parse_statement();
-		if (!stmt) break;
+		if (!stmt) {
+			if (pos >= length) break;
+			sync_to_next_line();
+			if (pos >= length) break;
+			continue;
+		}
 		body = realloc(body, sizeof(AST*) * (size_t)(body_count + 1));
 		body[body_count++] = stmt;
 	}
 
-	if (parse_failed) return NULL;
+	if (error_count > 0) return NULL;
 
 	/* Duplicate import/export name detection */
 	char** seen_imports = NULL;
@@ -2247,21 +2291,22 @@ AST* parse_program(const char* code) {
 	char** seen_exports = NULL;
 	int seen_export_count = 0;
 
-	for (int i = 0; i < body_count && !parse_failed; i++) {
+	for (int i = 0; i < body_count; i++) {
 		AST* s = body[i];
 		if (s->kind == AST_IMPORT_DECL) { /* import_decl */
-			for (int j = 0; j < s->u.import_decl.name_count && !parse_failed;
-				 j++) {
+			for (int j = 0; j < s->u.import_decl.name_count; j++) {
 				char* name = s->u.import_decl.names[j];
+				int is_dup = 0;
 				for (int k = 0; k < seen_import_count; k++) {
 					if (strcmp(seen_imports[k], name) == 0) {
 						cur_line = s->line;
 						cur_col = s->col;
 						parse_error("Duplicate import '%s'", name);
+						is_dup = 1;
 						break;
 					}
 				}
-				if (!parse_failed) {
+				if (!is_dup) {
 					seen_imports = realloc(
 						seen_imports,
 						sizeof(char*) * (size_t)(seen_import_count + 1));
@@ -2269,18 +2314,19 @@ AST* parse_program(const char* code) {
 				}
 			}
 		} else if (s->kind == AST_EXPORT_DECL) { /* export_decl */
-			for (int j = 0; j < s->u.export_decl.name_count && !parse_failed;
-				 j++) {
+			for (int j = 0; j < s->u.export_decl.name_count; j++) {
 				char* name = s->u.export_decl.names[j];
+				int is_dup = 0;
 				for (int k = 0; k < seen_export_count; k++) {
 					if (strcmp(seen_exports[k], name) == 0) {
 						cur_line = s->line;
 						cur_col = s->col;
 						parse_error("Duplicate export '%s'", name);
+						is_dup = 1;
 						break;
 					}
 				}
-				if (!parse_failed) {
+				if (!is_dup) {
 					seen_exports = realloc(
 						seen_exports,
 						sizeof(char*) * (size_t)(seen_export_count + 1));
@@ -2292,7 +2338,7 @@ AST* parse_program(const char* code) {
 	free(seen_imports);
 	free(seen_exports);
 
-	if (parse_failed) return NULL;
+	if (error_count > 0) return NULL;
 
 	AST* program = make_ast(AST_PROGRAM);
 	program->u.program.body = body;

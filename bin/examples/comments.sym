@@ -1,0 +1,9 @@
+/*
+This is a block comment
+/*
+It's nested
+*/
+This one is also comment content
+*/
+
+// This is a line comment

@@ -8,10 +8,10 @@ const countWords: (text: string) = (text: string) {
     for(var i = 0; i<n; i++) {
         const word = words[i]
         if (string.length(word) == 0) continue
-struct.set(frequencies, word, (struct.get(frequencies, word) || 0) + 1)
+        struct.set(frequencies, word, (struct.get(frequencies, word) || 0) + 1)
     }
 
-return frequencies
+    return frequencies
 }
 
 // Пример текста

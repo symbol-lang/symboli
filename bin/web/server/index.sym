@@ -22,9 +22,6 @@ const serverCreator: IServerCreator = {
             }
         }
 
-        // Даже несмотря на то, что return нету, функция все равно возвращает
-        // значение, а именно последнюю переменную, зачем-то.
-        // const foo = 42
         return server
     }
 }
