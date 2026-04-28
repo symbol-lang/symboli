@@ -1,0 +1,13 @@
+import { console } from "symbol"
+import { array } from "symbol"
+
+var main: null (string[]) = (args) {
+    var arr1: any[] = [10, "69"]
+    var arr2: int[] = [5, 10, 11, 12, 13, "55"] // должно выдать ошибку тк число 55 как строка
+
+    arr2[0] = arr1[0]
+    console.writeln("arr1:", arr1) // Должно показать [10]
+    console.writeln("arr2:", arr2[0]) // 5
+}
+
+main([])

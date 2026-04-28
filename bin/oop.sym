@@ -1,0 +1,35 @@
+import { console } from "symbol"
+
+interface IAnimal {
+    // Syntax error at line 4, column 18: Unknown type 'IAnimal'
+    // ошибки быть не должно!
+    this: IAnimal | null, 
+    name: string,
+    age: int,
+    alive: bool,
+    methods: {
+        say: (),
+        die: (any)
+    }
+}
+
+const dog: IAnimal = {
+    this = null, // useless
+    name = "Жорик",
+    age = 2,
+    alive = true,
+    methods = {
+        say = (this) {
+            console.writeln("${this.name} says bark!")
+        },
+        die = (this, who) {
+            this.alive = false
+            console.writeln("died by:", who.name)
+        }
+    }
+}
+dog.this = dog
+
+dog.methods.say(dog)
+dog.methods.die(dog, dog)
+console.writeln("${dog.name} alive:", dog.alive ? "yes" : "no")

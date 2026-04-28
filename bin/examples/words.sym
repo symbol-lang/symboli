@@ -1,0 +1,29 @@
+import { console, string, array, struct } from "symbol"
+
+const countWords: (text: string) = (text: string) {
+    const frequencies = {}
+    const words: string[] = string.split(string.trim(string.lowercase(text)), "\\s+")
+
+    const n = array.length(words)
+    for(var i = 0; i<n; i++) {
+        const word = words[i]
+        if (string.length(word) == 0) continue
+struct.set(frequencies, word, (struct.get(frequencies, word) || 0) + 1)
+    }
+
+return frequencies
+}
+
+// Пример текста
+const text = "hello world hello";
+
+// Подсчёт
+const result = countWords(text);
+const keys = struct.get_keys(result)
+console.writeln("keys:", keys)
+
+for (var i = 0; i < array.length(keys); i++) {
+    const word = keys[i]
+    const count = result[word]
+    console.writeln("${word}: ${count}")
+}

@@ -1,0 +1,21 @@
+import { system, console } from "symbol"
+
+var main: int (args: any[]) = (args: any[]) {
+    console.writeln("Fuzz, buzz program: ${args}")
+
+    var count = args[0]
+    for (var i = 0; i < count; i = i + 1) {
+        if (!(i % 15)) {
+            console.writeln("FizzBuzz")
+        } else if (!(i % 3)) {
+            console.writeln("Fizz")
+        } else if (!(i % 5)) {
+            console.writeln("Buzz")
+        } else {
+            console.writeln("${i}")
+        }
+    }
+    return 0
+}
+
+system.quit(main([100]))

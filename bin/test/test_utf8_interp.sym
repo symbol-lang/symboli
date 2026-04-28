@@ -1,0 +1,2 @@
+var name = "Мир"
+console.writeln("Привет, ${name}! 🌍")

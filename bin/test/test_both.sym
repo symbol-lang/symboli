@@ -1,0 +1,7 @@
+console.writeln("Testing console.read() and console.readln()")
+console.write("Enter a char: ")
+var ch = console.read()
+console.writeln("Char: ${ch}")
+console.write("Enter a line: ")
+var line = console.readln()
+console.writeln("Line: ${line}")

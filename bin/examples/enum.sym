@@ -1,0 +1,40 @@
+import { console } from "symbol"
+
+enum IDirection {
+    // По умолчанию это целые числа
+    Up,   // 0
+    Down, // 1
+    Left, // 2
+    Right // 3
+}
+
+const dir: IDirection = IDirection.Right
+
+console.writeln("dir:", dir) // Должно вывести число
+
+enum IStatus {
+    // Но можно задать их как строки
+    success = "SUCCESS",
+    failure = "FAILURE",
+}
+
+console.writeln("status:", IStatus.success) // Должно вывести строку
+
+enum IEnum {
+  A = 1,
+  B = A * 2,
+}
+
+enum IEnum2 {
+  A = 1,
+  B,
+  D = "foo",
+  C = 2,
+  E, // 3
+}
+
+console.writeln(IEnum2.A) // 1
+console.writeln(IEnum2.B) // 2
+console.writeln(IEnum2.D) // foo
+console.writeln(IEnum2.C) // 2
+console.writeln(IEnum2.E) // 3

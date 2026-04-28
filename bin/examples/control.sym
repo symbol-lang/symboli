@@ -1,0 +1,49 @@
+import { console } from "symbol"
+
+// if / else
+var x: int = 5
+if (x > 3) {
+    console.writeln("if: x > 3")
+} else {
+    console.writeln("if: x <= 3")
+}
+
+// while
+var i: int = 0
+while (i < 3) {
+    console.writeln("while:", i)
+    i = i + 1
+}
+
+// do while
+var j: int = 0
+do {
+    console.writeln("do-while:", j)
+    j = j + 1
+} while (j < 3)
+
+// for
+for (var k: int = 0; k < 3; k = k + 1) {
+    console.writeln("for:", k)
+}
+
+// break
+var n: int = 0
+while (true) {
+    if (n == 2) {
+        break
+    }
+    console.writeln("break-loop:", n)
+    n = n + 1
+}
+
+// switch
+var day: int = 2
+switch (day) {
+    case 1: console.writeln("switch: Monday")
+    case 2: {
+        console.writeln("switch: Tuesday")
+        console.writeln("switch: Tuesday 2")
+    }
+    default: console.writeln("switch: other")
+}

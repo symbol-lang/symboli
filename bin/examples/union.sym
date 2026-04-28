@@ -1,0 +1,43 @@
+import { console } from "symbol"
+import { type } from "symbol"
+
+// Пример использования union типов в Symbol
+// Union позволяет переменной хранить значения разных типов
+
+var value: int | string = 42
+console.writeln("Value as int:")
+console.writeln(value)
+
+value = "Hello, Union!"
+console.writeln("Value as string:")
+console.writeln(value)
+
+// Другой пример с bool и float
+var another: bool | float = true
+console.writeln("Another as bool:")
+console.writeln(another)
+
+another = 3.14
+console.writeln("Another as float:")
+console.writeln(another)
+
+// Массив элементов union типа
+// должно выдать ошибку если в массиве будут не строки (так как указан второй тип string[])
+var arr: int | string [] = [1, "two", 3, "four"]
+console.writeln("Array:")
+console.writeln(arr)
+
+// Функция, принимающая union
+var process: null (input: int | string) = (input: int | string) {
+    console.writeln("Received:")
+    console.writeln(input)
+}
+
+process(100)
+process("test")
+
+// должно выдать тип текущего значения 
+// если это int, то "int"
+// если это string[], то "string[]"
+// сейчас же он почему-то дает "any[]"
+console.writeln("arr:", type.of(arr))

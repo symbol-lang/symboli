@@ -1,0 +1,14 @@
+import { console } from "symbol"
+
+var stackOverflow: (count = 1) = {
+    console.writeln("count:", count)
+    count++
+stackOverflow(count)
+}
+
+var main: (args: any[]) = {
+    console.writeln("Hello, world! ${args}")
+    stackOverflow()
+}
+
+main([])

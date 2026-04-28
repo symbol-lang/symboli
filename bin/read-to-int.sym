@@ -1,0 +1,7 @@
+import { cast, console } from "symbol"
+
+console.write("Введите число: ")
+const value = console.readln()
+console.writeln("Значение: '${value}'")
+console.writeln("Результат:", value + 1) // если value это строка, то интерпретатор должен вызывать ошибку
+console.writeln("Результат:", cast.to_int(value) + 1)

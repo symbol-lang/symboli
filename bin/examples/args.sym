@@ -1,0 +1,7 @@
+import { console } from "symbol"
+
+var main: (any[]) = (args: any[] = [10, 20, 30]) {
+    console.writeln("Hello, world! ${args}")
+}
+
+main()

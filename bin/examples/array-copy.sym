@@ -1,0 +1,32 @@
+import { array, console } from "symbol"
+
+var foo: int[] = [5, 7, 2 ,4, 9, 0]
+
+const bubbleSort: int[] (arr: int[]) = (arr: int[]) {
+    const result = array.copy(arr)
+    const n = array.length(result)
+
+    for (var i = 0; i < n - 1; i++) {
+        var swapped: bool = false
+
+        for (var j = 0; j < n - 1 - i; j++) {
+            if (result[j] > result[j + 1]) {
+                var temp = result[j]
+                result[j] = result[j + 1]
+                result[j + 1] = temp
+
+                swapped = true
+            }
+        }
+
+        if (!swapped) break
+    }
+
+    return result
+}
+
+console.writeln("foo:", foo)
+var bar = bubbleSort(foo)
+console.writeln("bar:", bar)
+console.writeln("foo:", foo)
+

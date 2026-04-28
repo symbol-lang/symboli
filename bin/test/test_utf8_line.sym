@@ -1,0 +1,1 @@
+console.write("Type line: ") var line = console.readln() console.writeln("You typed: ${line}")

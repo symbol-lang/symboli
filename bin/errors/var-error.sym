@@ -1,0 +1,7 @@
+import { console } from "symbol"
+
+var x = 5
+// должна вызывать ПОДРОБНУЮ ошибку
+const x = 4
+
+console.writeln("x:", x)

@@ -1,0 +1,24 @@
+import { console } from "symbol"
+
+var asyncFunc: async null() = {
+
+}
+
+var main: async null(args: string[]) = {
+    var foo: int = 42.0
+    // var bar: float = 420.0
+
+    asyncFunc()
+    
+    asyncFunc().then(() = {
+        console.writeln("asyncFunc then!")
+    }).catch(() = {
+        console.writeln("asyncFunc then!")
+    })
+
+    await asyncFunc()
+
+    console.writeln("Hello, world! ${foo}") // , ${bar}
+}
+
+main([]) // main теперь выполняется в отдельном потоке

@@ -1,0 +1,1 @@
+console.writeln("Enter a character:") var ch = console.read() console.writeln("You entered: ${ch}")

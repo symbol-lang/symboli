@@ -1,0 +1,378 @@
+import { system } from "symbol"
+import { console, string, array, struct } from "symbol"
+
+/*
+ * Обычный Hello world!
+
+Проверяет:
+
+* базовый синтаксис
+* вывод в консоль
+* строки
+*/
+var check_01 = () {
+    console.writeln("Hello, world!")
+}
+
+/*
+ * Калькулятор выражений
+*/
+var check_02 = () {
+    var result = 2 + 3 * (4 - 1)
+    console.writeln(result)
+}
+
+/*
+ * FizzBuzz
+
+Проверяет:
+
+* циклы
+* условные операторы
+* арифметику
+* строки
+*/
+var check_03 = () {
+    var count = 10
+    for(var i = 0; i<count; i = i + 1) {
+        if (!(i % 15)) {
+    console.writeln("FizzBuzz")
+} else if (!(i % 3)) {
+    console.writeln("Fizz")
+} else if (!(i % 5)) {
+    console.writeln("Buzz")
+} else {
+    console.writeln("${i}")
+}
+    }
+}
+
+/*
+ * Факториал
+
+(итеративный и рекурсивный варианты)
+
+Проверяет:
+
+* функции
+* рекурсию
+* стек вызовов
+* целочисленную арифметику
+*/
+var check_04 = () {
+    var factorialIterative: int (int) = (n) {
+        var result = 1
+    if(n < 0)
+return -1
+for (var i = 1; i <= n; ++i)
+    result *= i
+return result
+    }
+
+var factorialRecursive: int(int) = (n) {
+    return n < 0 ? -1 : n == 0 ? 1 : n * factorialRecursive(n - 1)
+}
+
+console.writeln("factorialIterative(10):", factorialIterative(10))
+console.writeln("factorialRecursive(10):", factorialRecursive(10))
+}
+
+/*
+ * Числа Фибоначчи
+
+Проверяет:
+
+* рекурсию
+* оптимизацию
+* производительность
+* мемоизацию (если есть)
+*/
+var check_05: () = () {
+    var fibonacciIterative: int (int) = (n) {
+        if(n < 0) {
+            console.writeln("No negative values please!")
+            system.quit(1)
+        }
+
+        if(n == 0) return 0
+if (n == 1) return 1
+
+var a = 0
+var b = 1
+
+for (var i = 2; i <= n; i++) {
+    const next = a + b
+    a = b
+    b = next
+}
+return b
+    }
+
+var fibonacciRecursive: (int) = (n) {
+    if(n < 0) {
+        console.writeln("No negative values please!")
+        system.quit(1)
+    }
+
+        if(n == 0) return 0
+if (n == 1) return 1
+
+return fibonacciRecursive(n - 1) + fibonacciRecursive(n - 2)
+    }
+
+const n = 10
+console.writeln("Число Фибоначчи для n=${n}:", fibonacciIterative(n))
+console.writeln("Число Фибоначчи для n=${n}:", fibonacciRecursive(n))
+}
+
+/*
+ * Проверка на простое число
+
+Проверяет:
+
+* циклы
+* деление и остаток
+* логические операции
+* оптимизацию вычислений
+*/
+var check_06: () = () {
+    const isPrime = (n: int) {
+        // Простыми считаются только числа больше 1
+        if (n <= 1) {
+    return false
+}
+
+// 2 и 3 — простые
+if (n <= 3) {
+    return true
+}
+
+// Отсекаем чётные числа и числа, кратные 3
+if (n % 2 == 0 || n % 3 == 0) {
+    return false
+}
+
+// Проверяем делители вида 6k ± 1 до sqrt(n)
+for (var i = 5; i * i <= n; i += 6) {
+    if (n % i == 0 || n % (i + 2) == 0) {
+        return false
+    }
+}
+return true
+    }
+
+// Примеры использования
+for (var i = 1; i <= 20; i++) {
+    console.writeln("${i}: ${isPrime(i) ? 'простое' : 'составное'}")
+}
+}
+
+/*
+ * Сортировка массива
+
+Например, пузырьком или быстрая сортировка.
+
+Проверяет:
+
+* массивы
+* индексацию
+* обмен значений
+* функции
+*/
+var check_07: () = () {
+    const bubbleSort: int[](int[]) = (arr) {
+        const result = array.copy(arr)
+        const n = array.length(result)
+
+        for (var i = 0; i < n - 1; i++) {
+    var swapped: bool = false
+
+    for (var j = 0; j < n - 1 - i; j++) {
+        if (result[j] > result[j + 1]) {
+            var temp = result[j]
+            result[j] = result[j + 1]
+            result[j + 1] = temp
+
+            swapped = true
+        }
+    }
+
+    if (!swapped) break
+}
+
+return result
+    }
+
+const numbers = [64, 34, 25, 12, 22, 11, 90];
+console.writeln("Исходный массив:", numbers);
+console.writeln("Отсортированный:", bubbleSort(numbers));
+}
+
+/*
+ * Подсчёт частоты слов в тексте
+
+Проверяет:
+
+* строки
+* разбиение текста
+* словари / hash map
+* работу с файлами
+
+Пример:
+hello world hello
+
+Результат:
+hello: 2
+world: 1
+*/
+var check_08: () = () {
+    const countWords = (text: string) {
+        const frequencies = {}
+        const words: string[] = string.split(string.trim(string.lowercase(text)), "\\s+")
+    
+        const n = array.length(words)
+        for(var i = 0; i<n; i++) {
+        const word = words[i]
+            if (string.length(word) == 0) continue
+struct.set(frequencies, word, (struct.get(frequencies, word) || 0) + 1)
+        }
+
+return frequencies
+    }
+
+// Пример текста
+const text = "hello world hello";
+
+// Подсчёт
+const result = countWords(text);
+const keys = struct.get_keys(result)
+console.writeln("keys:", keys)
+
+for (var i = 0; i < array.length(keys); i++) {
+    const word = keys[i]
+    const count = result[word]
+    console.writeln("${word}: ${count}")
+}
+}
+
+/*
+ * Обратная польская запись (RPN-калькулятор)
+
+Проверяет:
+
+* стек
+* парсинг строк
+* обработку ошибок
+* структуры данных
+
+Пример:
+3 4 + 2 *
+
+Результат:
+14
+*/
+var check_09: () = () {
+    const evaluateRPN = (expression) {
+        const stack: any[] = []
+        const tokens = string.split(string.trim(expression), "\\s+")
+
+        for(var i = 0; i<array.length(tokens); i++) {
+            const token = tokens[i]
+            const is_number = string.is_float(token)
+
+            if (is_number) {
+        array.push(stack, cast.to_float(token))
+        continue
+    }
+
+    if (array.length(stack) < 2) {
+        console.writeln("Недостаточно операндов для оператора \"${token}\"")
+        system.quit(1)
+    }
+
+    const b = array.pop(stack)
+    const a = array.pop(stack)
+
+    switch (token) {
+        case "+":
+            array.push(stack, a + b)
+        case "-":
+            array.push(stack, a - b)
+        case "*":
+            array.push(stack, a * b)
+        case "/": {
+            if (b == 0) {
+                console.writeln("Деление на ноль")
+                system.quit(1)
+            }
+            array.push(stack, a / b)
+        }
+        default: {
+            console.writeln("Неизвестный оператор: \"${token}\"")
+            system.quit(1)
+        }
+    }
+        }
+
+    if (array.length(stack) != 1) {
+        console.writeln("Некорректное выражение")
+        system.quit(1)
+    }
+
+    return stack[0]
+    }
+
+    // Пример использования
+    const expression = "3 4 + 2 *"
+    const result = evaluateRPN(expression)
+    console.writeln("${expression} = ${result}")
+}
+
+/*
+ * JSON pretty-printer
+
+Проверяет:
+
+* рекурсивные структуры
+* строки и Unicode
+* форматирование
+* парсинг
+*/
+var check_10: () = () {
+
+}
+
+/*
+ * Мини-интерпретатор арифметических выражений
+
+Например:
+2 * (3 + 4)
+
+Проверяет:
+
+* токенизацию
+* парсинг
+* AST
+* рекурсию
+* обработку ошибок
+*/
+var check_11: () = () {
+
+}
+
+var main: int (any[]) = (args) {
+    check_01()
+    check_02()
+    check_03()
+    check_04()
+    check_05()
+    check_06()
+    check_07()
+    check_08()
+    check_09()
+    check_10()
+    check_11()
+    return 0
+}
+
+system.quit(main([]))

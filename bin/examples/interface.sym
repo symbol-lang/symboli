@@ -1,0 +1,24 @@
+import { console } from "symbol"
+
+interface ICallback {
+	callback: int (any),
+	name: string,
+}
+
+const callback_1: int (any) = (props: any) {
+	console.writeln("callback 1!")
+	return 42
+}
+
+const callback_2: int (any) = (props: any) {
+	console.writeln("callback 2!")
+	return 42 - 2
+}
+
+const foo: ICallback = {
+	callback = callback_1,
+	name = "foo callback"
+}
+
+const result = foo.callback(null)
+console.writeln("result:", result)

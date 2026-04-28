@@ -1,0 +1,10 @@
+import { console, system } from "symbol"
+
+var main: int (string[]) = (args: string[]) {
+    var foo: int = 42
+    console.writeln("Hello, world! ${foo}")
+
+    return 0
+}
+
+system.quit(main(system.args()))

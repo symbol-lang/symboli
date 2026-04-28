@@ -1,0 +1,9 @@
+import { console } from "symbol"
+
+var foo: null (value: any) = {
+	console.writeln("value:", value)
+}
+
+var bar = foo("error!")
+
+export { foo }

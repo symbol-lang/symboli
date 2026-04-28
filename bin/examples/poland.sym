@@ -1,0 +1,74 @@
+/*
+ * Обратная польская запись (RPN-калькулятор)
+
+Проверяет:
+
+* стек
+* парсинг строк
+* обработку ошибок
+* структуры данных
+
+Пример:
+3 4 + 2 *
+
+Результат:
+14
+*/
+import { console, system } from "symbol"
+import { cast } from "symbol"
+import { string, array } from "symbol"
+
+const evaluateRPN: (string) = (expression) {
+    const stack: any[] = []
+    const tokens = string.split(string.trim(expression), "\\s+")
+
+    for(var i = 0; i<array.length(tokens); i++) {
+        const token = tokens[i]
+        const is_number = string.is_float(token)
+
+        if (is_number) {
+            array.push(stack, cast.to_float(token))
+            continue
+        }
+
+        if (array.length(stack) < 2) {
+            console.writeln("Недостаточно операндов для оператора \"${token}\"")
+            system.quit(1)
+        }
+
+        const b = array.pop(stack)
+        const a = array.pop(stack)
+
+        switch (token) {
+            case "+":
+                array.push(stack, a + b)
+            case "-":
+                array.push(stack, a - b)
+            case "*":
+                array.push(stack, a * b)
+            case "/": {
+                if (b == 0) {
+                    console.writeln("Деление на ноль")
+                    system.quit(1)
+                }
+                array.push(stack, a / b)
+            }
+            default: {
+                console.writeln("Неизвестный оператор: \"${token}\"")
+                system.quit(1)
+            }
+        }
+    }
+
+if (array.length(stack) != 1) {
+    console.writeln("Некорректное выражение")
+    system.quit(1)
+}
+
+return stack[0]
+}
+
+// Пример использования
+const expression = "3 4 + 2 *"
+const result = evaluateRPN(expression)
+console.writeln("${expression} = ${result}")

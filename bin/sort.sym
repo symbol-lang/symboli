@@ -1,0 +1,37 @@
+import { array, console } from "symbol"
+
+var intArray: int[] = []
+array.push(intArray, 5)
+// console.writeln("intArray:", intArray)
+array.push(intArray, 1)
+array.push(intArray, -10)
+console.writeln("intArray:", intArray)
+
+// прошу обратить внимание на то, что должна присваиваться ссылка на массив
+// после сортировки
+intArray = array.sort(intArray)
+
+interface Human {
+    name: string,
+    age: int,
+}
+
+// Обрати внимание на то, что это массив из структуры Human (и ничто другое туда
+// добавить нельзя, кроме как Human)
+var humans: Human[] = []
+
+// Обрати внимание на то, что передается структура в качестве аргумента,
+// не переменная структура 
+array.push(humans, { name = "Данил", age = 24 })
+array.push(humans, { name = "Женя", age = 22 })
+
+// Сортировка объектов должна происходить таким образом
+// как пример
+array.sort(humans, bool(a, b) = {
+    return a.age < b.age
+})
+
+for (var i = 0; i < array.length(humans); i++) {
+    var h = humans[i]
+    console.writeln("${h.name} age is ${h.age}")
+}

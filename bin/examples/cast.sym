@@ -1,0 +1,17 @@
+import { cast, console } from "symbol"
+
+var main: () = () {
+    console.writeln(cast.to_bool(0))
+    console.writeln(cast.to_bool(1))
+    console.writeln(cast.to_bool(""))
+    console.writeln(cast.to_bool("hello"))
+    console.writeln(cast.to_string(42))
+    console.writeln(cast.to_string(3.14))
+    console.writeln(cast.to_string(true))
+    console.writeln(cast.to_int("123"))
+    console.writeln(cast.to_int(3.9))
+    console.writeln(cast.to_float("2.71"))
+    console.writeln(cast.to_float(7))
+}
+
+main()

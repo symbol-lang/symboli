@@ -1,0 +1,18 @@
+import { console } from "symbol"
+
+var variable: any = 42
+var func: any () = () {
+    return 42
+}
+var struct = {
+    // тип foo зависит от variable (автоматическая типизация)
+    foo = variable, // в JS делается через :, у Symbol это =
+    bar: string = "42",
+    zoo: null (any) = (props) { // props are any by default
+        console.writeln("props:", props)
+    },
+    func // если указать просто название переменной и если такая переменная существует, то ее можно вставить в структуру таким образом
+}
+
+struct.zoo(null)
+console.writeln(struct.func())

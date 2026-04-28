@@ -1,0 +1,9 @@
+import { system, console, array } from "symbol"
+
+console.writeln("${system.args()}") // выдает массив строк
+
+var arr: any[] = []
+console.write("What to add: ")
+var value = console.readln()
+array.push(arr, value)
+console.writeln(arr)

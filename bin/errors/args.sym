@@ -1,0 +1,10 @@
+import { console } from "symbol"
+
+// Должно вызывать ошибку так как используется тип int[],
+// при том что в args (первый аргумент, который должен иметь тип int[]) подается
+// строка "40"
+var main: (int[]) = (args: any[] = [10, 20, 30, "40"]) {
+    console.writeln("Hello, world! ${args}")
+}
+
+main()

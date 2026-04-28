@@ -1,0 +1,35 @@
+import { console } from "symbol"
+import { struct } from "symbol"
+
+var my_struct = {}
+
+// Добавление значение в структуру
+my_struct["callback"] = (a, b) = {
+    return a > b
+}
+// либо
+struct.set(my_struct, "callback", (a, b) = {
+    return a > b
+})
+
+// Получение значения
+var callback = my_struct["callback"]
+// либо
+callback = struct.get(my_struct, "callback")
+const none = my_struct["none"] // returns null
+
+// Получение всех ключей
+var keys = struct.get_keys(my_struct)
+console.writeln("keys:", keys)
+
+// Получение всех значений
+var values = struct.get_values(my_struct)
+console.writeln("values:", values)
+
+// Удаление значения
+my_struct["callback"] = null
+// или
+struct.delete(my_struct, "callback")
+
+// Очистка полностью
+struct.clear(my_struct)

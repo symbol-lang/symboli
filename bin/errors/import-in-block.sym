@@ -1,0 +1,16 @@
+import { console } from "symbol"
+import { string } from "symbol"
+
+const func: () = {
+
+    console.writeln("what?", string.length("what?"))
+}
+
+const xyunc: () = {
+    console.writeln("what?", string.length("what?"))
+}
+
+func()
+xyunc()
+
+export { func }

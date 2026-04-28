@@ -1,0 +1,5 @@
+import { array, console } from "symbol"
+
+var intArray: int[] = []
+array.push(intArray, "5")
+console.writeln("intArray:", intArray)

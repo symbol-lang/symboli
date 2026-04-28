@@ -1,0 +1,8 @@
+import { console } from "symbol"
+
+const test_function: (any) = (foo = 42) {
+    console.writeln("foo:", foo)
+}
+
+test_function()
+test_function(69)

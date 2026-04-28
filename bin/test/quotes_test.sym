@@ -1,0 +1,13 @@
+import { console } from "symbol"
+
+var main: null (args: any[]) = {
+    var name: string = "World"
+    var greeting: string = "Hello, ${name}!"
+    var plain: string = 'No interpolation: ${name}'
+    var tab: string = 'Tab:\there'
+    console.writeln(greeting)
+    console.writeln(plain)
+    console.writeln(tab)
+}
+
+main([])

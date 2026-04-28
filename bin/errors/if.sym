@@ -1,0 +1,12 @@
+import { console } from "symbol"
+
+var main: () = {
+    var foo: bool = false
+    // var bar: float = 420.0
+
+    if (foo == false) {2
+        console.writeln("Hello, world!")
+    }
+}
+
+main()

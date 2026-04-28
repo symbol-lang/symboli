@@ -1,0 +1,35 @@
+import { type, console } from "symbol"
+
+var add: int (a: int, b: int) = (a: int, b: int) {
+    return a + b
+}
+
+enum Test {
+    FOO,
+    BAR
+}
+
+// Должно выдать ошибку если сделать type.of
+interface ITest {
+    foo: int,
+    bar: string
+}
+
+var main: () = () {
+    console.writeln(type.of(42))
+    console.writeln(type.of(3.14))
+    console.writeln(type.of("hello"))
+    console.writeln(type.of(true))
+    console.writeln(type.of(null))
+
+    console.writeln(type.of(null) == "null")
+    console.writeln(type.of(Test))
+    // console.writeln(type.of(ITest))
+
+    var nums: int[] = [1, 2, 3]
+    console.writeln(type.of(nums))
+
+    console.writeln(type.of(add))
+}
+
+main()

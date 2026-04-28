@@ -1,0 +1,5 @@
+import { console, } from "symbol"
+
+console.write("Type char: ")
+var char = console.read()
+console.writeln(char)

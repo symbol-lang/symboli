@@ -1,0 +1,39 @@
+import { math, console } from "symbol"
+
+// Trigonometric functions
+console.writeln("cos(0):", math.cos(0))
+console.writeln("sin(0):", math.sin(0))
+console.writeln("tan(0):", math.tan(0))
+console.writeln("acos(0.5):", math.acos(0.5))
+console.writeln("asin(0.5):", math.asin(0.5))
+console.writeln("atan(0.5):", math.atan(0.5))
+console.writeln("atan2(-10, 10):", math.atan2(-10, 10))
+
+// Hyperbolic functions
+console.writeln("cosh(0):", math.cosh(0))
+console.writeln("sinh(0):", math.sinh(0))
+console.writeln("tanh(0):", math.tanh(0))
+console.writeln("acosh(0.5):", math.acosh(0.5))
+console.writeln("asinh(0.5):", math.asinh(0.5))
+console.writeln("atanh(0.5):", math.atanh(0.5))
+
+// Exponential and logarithmic functions
+...
+
+// Power functions
+...
+
+// Error and gamma functions
+...
+
+// Rounding and remainder functions
+...
+
+// Floating-point manipulation functions
+...
+
+// Minimum, maximum, difference functions
+...
+
+// Other functions
+...

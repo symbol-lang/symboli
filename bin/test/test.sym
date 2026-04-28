@@ -1,0 +1,2 @@
+console.writeln("${true ? "yes" : "no"}")
+console.writeln(false ? "yes" : "no")

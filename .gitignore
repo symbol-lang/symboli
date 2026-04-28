@@ -1,0 +1,11 @@
+.cache/
+.claude/
+build/
+
+.DS_Store
+bin/symboli
+graphify-out/
+
+OLDPROMPTS.md
+TODO.md
+USEFUL.md

@@ -1,0 +1,13 @@
+import { console } from "symbol"
+
+const foo = 42
+console.writeln("foo:", foo)
+
+// Область видимости, в которой foo можно объявить
+// и ошибки "Runtime error: 'foo' already declared" не должно произойти
+{
+    const foo = 69
+    console.writeln("foo:", foo)
+}
+
+console.writeln("foo:", foo)

@@ -1,0 +1,6 @@
+import { console } from "symbol"
+
+var a = 5
+var b = "5"
+console.writeln("check:", a == b)
+console.writeln("check:", null ? 1 : 0)

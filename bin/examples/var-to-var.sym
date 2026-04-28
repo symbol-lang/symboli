@@ -1,0 +1,10 @@
+import { console } from "symbol"
+
+var main: () = () {
+    var foo = 42
+    var baz = foo
+    foo = 24
+    console.writeln(foo, baz)
+}
+
+main()

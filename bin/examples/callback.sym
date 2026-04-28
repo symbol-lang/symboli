@@ -1,0 +1,38 @@
+import { console } from "symbol"
+
+// автоматическая типизация
+const callback1 = () {
+    console.writeln("callback1!")
+}
+
+// указание типа 
+const callback2: null () = () {
+    console.writeln("callback2!")
+}
+
+//
+const callback2_5: int () = () {
+    console.writeln("callback2.5!")
+    return 2
+}
+
+// указывается сначала тип, а затем аргументы
+const callback3: (any) = (props: any) {
+    console.writeln("callback3! ${props}")
+}
+
+// такой же как callback3, но автоматически ставится тип
+// props = any
+const callback4 = (props) {
+    console.writeln("callback4! ${props}")
+}
+
+// function types as param types (not yet supported in parser):
+// const function1: (null ()) = (cb: null ()) { cb() }
+// const function2: (()) = (cb) { cb() }
+// const function3: (null (any)) = (cb: (props)) { var props = 42; cb(props) }
+
+callback1()
+callback2()
+callback3("hello")
+callback4("world")

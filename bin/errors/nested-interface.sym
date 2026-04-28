@@ -1,0 +1,28 @@
+import { console } from "symbol"
+
+interface AnimalMethods {
+    say: (),
+}
+
+interface Animal {
+    age: int,
+    methods: {
+        say: (),
+        die: (who) // должно падать с ошибкой так как вместо названия аргумента должен быть просто его тип
+    }
+}
+
+const dog: Animal = {
+    age = 2,
+    methods = {
+        say: () = () {
+            console.writeln("Bark!")
+        },
+        die = (who) {
+            console.writeln("dieb by!")
+        }
+    }
+}
+
+console.writeln("age:", dog.age)
+dog.methods.say()

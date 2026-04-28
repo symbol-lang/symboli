@@ -1,0 +1,11 @@
+import { console } from "symbol"
+
+var main: null (args: any[]) = {
+    var multi: string = "line one
+line two"
+    var escaped_n: string = 'backslash-n: \n here'
+    console.writeln(multi)
+    console.writeln(escaped_n)
+}
+
+main([])
