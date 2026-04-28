@@ -27,6 +27,183 @@ static char* dup_cstr(const char* s) {
 int global_argc;
 char** global_argv;
 
+static void print_ast_json(AST* node);
+
+static const char* kind_name(ASTKind k) {
+	switch (k) {
+		case AST_VAR_DECL: return "var_decl";
+		case AST_LAMBDA: return "lambda";
+		case AST_CALL: return "call";
+		case AST_LITERAL: return "literal";
+		case AST_VAR_REF: return "var_ref";
+		case AST_STRING_INTERP: return "string_interp";
+		case AST_PROGRAM: return "program";
+		case AST_INTERFACE_DECL: return "interface_decl";
+		case AST_OBJECT_LITERAL: return "object_literal";
+		case AST_MEMBER_ACCESS: return "member_access";
+		case AST_MEMBER_ASSIGN: return "member_assign";
+		case AST_RETURN: return "return";
+		case AST_BINARY: return "binary";
+		case AST_IMPORT_DECL: return "import";
+		case AST_EXPORT_DECL: return "export";
+		case AST_IF: return "if";
+		case AST_WHILE: return "while";
+		case AST_DO_WHILE: return "do_while";
+		case AST_FOR: return "for";
+		case AST_SWITCH: return "switch";
+		case AST_BREAK: return "break";
+		case AST_CONTINUE: return "continue";
+		case AST_ASSIGN: return "assign";
+		case AST_UNARY: return "unary";
+		case AST_CONDITIONAL: return "conditional";
+		case AST_ARRAY_LITERAL: return "array_literal";
+		case AST_INDEX_ACCESS: return "index_access";
+		case AST_INDEX_ASSIGN: return "index_assign";
+		case AST_ENUM_DECL: return "enum_decl";
+		default: return "unknown";
+	}
+}
+
+static void print_ast_json(AST* node) {
+	if (!node) {
+		printf("null");
+		return;
+	}
+
+	printf("{\"kind\":\"%s\",\"line\":%d,\"col\":%d",
+		   kind_name(node->kind), node->line, node->col);
+
+	switch (node->kind) {
+		case AST_PROGRAM:
+			printf(",\"body\":[");
+			for (int i = 0; i < node->u.program.body_count; i++) {
+				if (i > 0) printf(",");
+				print_ast_json(node->u.program.body[i]);
+			}
+			printf("]");
+			break;
+
+		case AST_VAR_DECL:
+			printf(",\"name\":\"%s\"", node->u.var_decl.name);
+			if (node->u.var_decl.init) {
+				printf(",\"init\":");
+				print_ast_json(node->u.var_decl.init);
+			}
+			break;
+
+		case AST_LITERAL:
+			printf(",\"value\":");
+			if (node->u.literal.type->kind == TYPE_BASIC) {
+				switch (node->u.literal.type->u.basic) {
+					case BASIC_INT:
+						printf("%d", node->u.literal.val.i);
+						break;
+					case BASIC_FLOAT:
+						printf("%g", node->u.literal.val.f);
+						break;
+					case BASIC_STRING:
+						printf("\"");
+						for (const char* p = node->u.literal.val.s; p && *p; p++) {
+							if (*p == '"' || *p == '\\') printf("\\");
+							printf("%c", *p);
+						}
+						printf("\"");
+						break;
+					case BASIC_BOOL:
+						printf("%s", node->u.literal.val.b ? "true" : "false");
+						break;
+					default:
+						printf("null");
+				}
+			} else {
+				printf("null");
+			}
+			break;
+
+		case AST_VAR_REF:
+			printf(",\"name\":\"%s\"", node->u.var_ref);
+			break;
+
+		case AST_CALL:
+			printf(",\"func\":");
+			print_ast_json(node->u.call.func);
+			printf(",\"args\":[");
+			for (int i = 0; i < node->u.call.arg_count; i++) {
+				if (i > 0) printf(",");
+				print_ast_json(node->u.call.args[i]);
+			}
+			printf("]");
+			break;
+
+		case AST_BINARY:
+			printf(",\"op\":%d,\"left\":", node->u.binary.op);
+			print_ast_json(node->u.binary.left);
+			printf(",\"right\":");
+			print_ast_json(node->u.binary.right);
+			break;
+
+		case AST_UNARY:
+			printf(",\"op\":%d,\"operand\":", node->u.unary.op);
+			print_ast_json(node->u.unary.operand);
+			break;
+
+		case AST_IF:
+			printf(",\"cond\":");
+			print_ast_json(node->u.if_stmt.cond);
+			printf(",\"then\":");
+			print_ast_json(node->u.if_stmt.then_branch);
+			if (node->u.if_stmt.else_branch) {
+				printf(",\"else\":");
+				print_ast_json(node->u.if_stmt.else_branch);
+			}
+			break;
+
+		case AST_WHILE:
+			printf(",\"cond\":");
+			print_ast_json(node->u.while_stmt.cond);
+			printf(",\"body\":");
+			print_ast_json(node->u.while_stmt.body);
+			break;
+
+		case AST_FOR:
+			printf(",\"init\":");
+			print_ast_json(node->u.for_stmt.init);
+			printf(",\"cond\":");
+			print_ast_json(node->u.for_stmt.cond);
+			printf(",\"update\":");
+			print_ast_json(node->u.for_stmt.update);
+			printf(",\"body\":");
+			print_ast_json(node->u.for_stmt.body);
+			break;
+
+		case AST_RETURN:
+			if (node->u.return_stmt.expr) {
+				printf(",\"expr\":");
+				print_ast_json(node->u.return_stmt.expr);
+			}
+			break;
+
+		case AST_LAMBDA:
+			printf(",\"params\":[");
+			for (int i = 0; i < node->u.lambda.param_count; i++) {
+				if (i > 0) printf(",");
+				printf("{\"name\":\"%s\"}", node->u.lambda.param_names[i]);
+			}
+			printf("],\"body\":[");
+			for (int i = 0; i < node->u.lambda.body_count; i++) {
+				if (i > 0) printf(",");
+				print_ast_json(node->u.lambda.body[i]);
+			}
+			printf("]");
+			break;
+
+		default:
+			break;
+	}
+
+	printf("}");
+}
+
 static char* read_file(const char* filename) {
 	FILE* f = fopen(filename, "r");
 	if (!f) return NULL;
@@ -197,10 +374,12 @@ static void print_help(const char* prog) {
 	printf("Options:\n");
 	printf("  -h, --help     Show this help message\n");
 	printf("  -d, --disasm   Disassemble bytecode instead of running\n");
+	printf("  -a, --ast      Print abstract syntax tree as JSON\n");
 	printf("\n");
 	printf("Examples:\n");
 	printf("  %s script.sym\n", prog);
 	printf("  %s --disasm script.sym\n", prog);
+	printf("  %s --ast script.sym\n", prog);
 }
 
 int main(int argc, char* argv[]) {
@@ -210,6 +389,7 @@ int main(int argc, char* argv[]) {
 	global_argv = argv;
 
 	int disasm_mode = 0;
+	int ast_mode = 0;
 	const char* filename = NULL;
 
 	for (int i = 1; i < argc; i++) {
@@ -219,6 +399,9 @@ int main(int argc, char* argv[]) {
 		} else if (strcmp(argv[i], "--disasm") == 0 ||
 				   strcmp(argv[i], "-d") == 0)
 			disasm_mode = 1;
+		else if (strcmp(argv[i], "--ast") == 0 ||
+				   strcmp(argv[i], "-a") == 0)
+			ast_mode = 1;
 		else if (!filename)
 			filename = argv[i];
 	}
@@ -243,6 +426,24 @@ int main(int argc, char* argv[]) {
 		Chunk* ch = compile(program, filename);
 		chunk_disassemble(ch, filename, 0);
 		chunk_free(ch);
+		free(code);
+		return 0;
+	}
+
+	if (ast_mode) {
+		char* code = read_file(filename);
+		if (!code) {
+			fprintf(stderr, "Cannot read file %s\n", filename);
+			return 1;
+		}
+		AST* program = parse_program(code);
+		if (!program) {
+			fprintf(stderr, "Failed to parse source %s\n", filename);
+			free(code);
+			return 1;
+		}
+		print_ast_json(program);
+		printf("\n");
 		free(code);
 		return 0;
 	}
