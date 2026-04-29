@@ -2,13 +2,13 @@ import { array, console } from "symbol"
 
 var foo: int[] = [5, 7, 2 ,4, 9, 0]
 
-// Должно вызвать ошибку, так как (arr: int[]) = (arr: int[]) в первом 
-// (arr: int[]) присутсвтует "arr:", чего быть не должно по синтаксическим
+// Должно вызвать ошибку, так как "(arr: int[]) = (arr: int[])" в первом 
+// "(arr: int[])" присутсвтует "arr:", чего быть не должно по синтаксическим
 // правилам.
-// Правильно будет int[] (int[]) = (arr: int[])
+// Правильно будет "int[] (int[]) = (arr: int[])"
 // Заметь что "= (arr: int[])" часть кода позволяет аргументам присваивать 
 // свой тип, но он должен быть тем же что и в "(int[])"
-const bubbleSort: int[] (int[]) = (arr: int[]) {
+const bubbleSort: int[] (arr: int[]) = (arr: int[]) {
     const result = array.copy(arr)
     const n = array.length(result)
 

@@ -1,6 +1,6 @@
 import { console } from "symbol"
 
-var main: null (args: any[]) = {
+var main = (args: any[]) {
     var multi: string = "line one
 line two"
     var escaped_n: string = 'backslash-n: \n here'

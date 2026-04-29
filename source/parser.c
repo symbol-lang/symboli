@@ -441,7 +441,24 @@ static Type** parse_type_arg_list(int* out_count) {
 		if (maybe_name) {
 			skip_ws();
 			if (match(":")) {
-				param = parse_type();
+				cur_line = save_line;
+				cur_col = save_col;
+				parse_error("parameter name '%s' is not allowed in a type annotation — use just the type, e.g. '(int[])'",
+							maybe_name);
+				free(maybe_name);
+				/* skip past the rest of this argument list to suppress cascading errors */
+				int depth = 1;
+				while (pos < length && depth > 0) {
+					if (src[pos] == '(') depth++;
+					else if (src[pos] == ')') depth--;
+					if (depth > 0) {
+						if (src[pos] == '\n') { cur_line++; cur_col = 1; }
+						else cur_col++;
+						pos++;
+					}
+				}
+				if (pos < length) { pos++; cur_col++; } /* consume ')' */
+				return NULL;
 			} else {
 				pos = save;
 				cur_line = save_line;
@@ -1725,10 +1742,12 @@ static AST* parse_statement(void) {
 	// }
 
 	int expr_line = cur_line, expr_col = cur_col;
+	int expr_pos = pos;
 	AST* stmt = parse_expression();
 	if (!stmt) {
 		parse_error("Unexpected token '%c' in statement",
 					pos < length ? src[pos] : '?');
+		pos = expr_pos;
 		return NULL;
 	}
 	if (!is_valid_statement(stmt)) {
@@ -1736,6 +1755,7 @@ static AST* parse_statement(void) {
 		source_line_snippet(expr_line, expr_col, snippet, sizeof(snippet));
 		cur_line = expr_line;
 		cur_col = expr_col;
+		pos = expr_pos;
 		parse_error("%s is not a valid statement: '%s'",
 					ast_kind_name(stmt->kind),
 					snippet);

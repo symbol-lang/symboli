@@ -4,11 +4,11 @@ import { struct } from "symbol"
 var my_struct = {}
 
 // Добавление значение в структуру
-my_struct["callback"] = (a, b) = {
+my_struct["callback"] = (a, b) {
     return a > b
 }
 // либо
-struct.set(my_struct, "callback", (a, b) = {
+struct.set(my_struct, "callback", (a, b) {
     return a > b
 })
 

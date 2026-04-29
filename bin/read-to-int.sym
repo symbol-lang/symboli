@@ -3,5 +3,14 @@ import { cast, console } from "symbol"
 console.write("Введите число: ")
 const value = console.readln()
 console.writeln("Значение: '${value}'")
-console.writeln("Результат:", value + 1) // если value это строка, то интерпретатор должен вызывать ошибку
+
+// если value это строка, то интерпретатор должен вызывать ошибку при суммировании с int ()
+// с остальными операциями - * / должно работать также
+
+// console.writeln("Результат:", value + 1) 
 console.writeln("Результат:", cast.to_int(value) + 1)
+
+// строку можно суммировать лишь с другой строкой!
+// тернарный оператор не работает если убрать скобки
+// но в TypeScript это работает, но не видно "Hello, World!"
+console.writeln("2 strings check:", "Hello, " + "World!" + (true ? "yes" : "no")) // Должно получиться Hello, World!

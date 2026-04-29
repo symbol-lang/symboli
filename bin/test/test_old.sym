@@ -1,10 +1,10 @@
 import { console } from "symbol"
 
-var return_true: bool () = {
+var return_true = () {
     return true
 }
 
-var main: null (args: string[]) = {
+var main = (args: string[]) {
     if ((5 == 5) && true && return_true()) {
         console.writeln("YES")
     }

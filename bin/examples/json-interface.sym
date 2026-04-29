@@ -1,10 +1,26 @@
 // NOTE: делает on_click = null
 import { console } from "symbol"
 import { json } from "symbol"
+import { type } from "symbol"
 
-var main: () = {
+interface IWidget {
+    debug: bool,
+    window: {
+        title: string,
+        name: string,
+        width: int,
+        height: int,
+    },
+    image: {
+        src: string,
+        name: string,
+    },
+    on_click: ()
+}
+
+var main = () {
     var my_json = {
-        widget = {
+        widget: IWidget = {
             debug = true,
             window = {
                 title = "Sample Widget",
@@ -16,7 +32,7 @@ var main: () = {
                 src = "Images/Sun.png",
                 name = "sun1",
             },
-            on_click = () = {
+            on_click = () {
                 console.writeln("click!")
             }
         }
@@ -24,7 +40,10 @@ var main: () = {
     var str = json.stringify(my_json)
     console.writeln("str:", str)
 
-    var parsed = json.parse(str)
+    // Type error: value does not satisfy interface IWidget: missing field 'debug'symbol
+    // Ошибки быть при этом не должно
+    var parsed: IWidget = json.parse(str)
+    console.writeln(type.of(parsed)) // без ": IWidget" выдает <object>
     console.writeln("widget.debug:", parsed.widget.debug)
 }
 

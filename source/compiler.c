@@ -339,8 +339,11 @@ static void compile_node(Compiler* c, AST* ast) {
 				int ti = chunk_add_type(c->chunk, dt->u.array.elem);
 				EMIT(OP_SET_ARR_ELEM_TYPE, ti, 0);
 			}
-			/* Check interface type compatibility */
-			if (dt && dt->kind == TYPE_INTERFACE) {
+			/* Check interface type compatibility.
+			 * Skip for function calls: the annotation acts as a type
+			 * assertion (caller knows the runtime type), not a checked cast. */
+			if (dt && dt->kind == TYPE_INTERFACE
+				&& !(ini && ini->kind == AST_CALL)) {
 				int ti = chunk_add_type(c->chunk, dt);
 				EMIT(OP_CHECK_TYPE, ti, 0);
 			}
