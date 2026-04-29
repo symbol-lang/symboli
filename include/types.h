@@ -59,6 +59,7 @@ typedef struct ObjectField {
 
 typedef struct Value {
 	struct Type* type;
+	struct Type* declared_type; /* non-NULL when function return type is a union */
 	union {
 		int b;
 		int i;

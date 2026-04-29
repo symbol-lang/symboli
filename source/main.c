@@ -85,6 +85,11 @@ static void print_ast_json(AST* node) {
 
 		case AST_VAR_DECL:
 			printf(",\"name\":\"%s\"", node->u.var_decl.name);
+			if (node->u.var_decl.vartype) {
+				char* ts = type_to_string(node->u.var_decl.vartype);
+				printf(",\"vartype\":\"%s\"", ts);
+				free(ts);
+			}
 			if (node->u.var_decl.init) {
 				printf(",\"init\":");
 				print_ast_json(node->u.var_decl.init);
@@ -184,10 +189,21 @@ static void print_ast_json(AST* node) {
 			break;
 
 		case AST_LAMBDA:
+			if (node->u.lambda.ret_type) {
+				char* ts = type_to_string(node->u.lambda.ret_type);
+				printf(",\"ret_type\":\"%s\"", ts);
+				free(ts);
+			}
 			printf(",\"params\":[");
 			for (int i = 0; i < node->u.lambda.param_count; i++) {
 				if (i > 0) printf(",");
-				printf("{\"name\":\"%s\"}", node->u.lambda.param_names[i]);
+				printf("{\"name\":\"%s\"", node->u.lambda.param_names[i]);
+				if (node->u.lambda.param_types && node->u.lambda.param_types[i]) {
+					char* ts = type_to_string(node->u.lambda.param_types[i]);
+					printf(",\"type\":\"%s\"", ts);
+					free(ts);
+				}
+				printf("}");
 			}
 			printf("],\"body\":[");
 			for (int i = 0; i < node->u.lambda.body_count; i++) {

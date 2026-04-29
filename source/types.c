@@ -205,8 +205,8 @@ char* type_to_string(const Type* type) {
 
 	if (type->kind == TYPE_FUNC) {
 		char* ret =
-			type->u.func.ret ? type_to_string(type->u.func.ret) : dup_cstr("");
-		size_t size = strlen(ret) + 3;
+			type->u.func.ret ? type_to_string(type->u.func.ret) : dup_cstr("null");
+		size_t size = strlen(ret) + 4; /* " (" + ")" + NUL */
 		for (int i = 0; i < type->u.func.param_count; i++) {
 			char* param = type_to_string(type->u.func.params[i]);
 			size += strlen(param) + 2;
@@ -215,7 +215,7 @@ char* type_to_string(const Type* type) {
 		char* result = malloc(size);
 		result[0] = '\0';
 		strcat(result, ret);
-		strcat(result, "(");
+		strcat(result, " (");
 		for (int i = 0; i < type->u.func.param_count; i++) {
 			char* param = type_to_string(type->u.func.params[i]);
 			strcat(result, param);
@@ -289,6 +289,7 @@ char* type_assignability_error(const Type* expected, const Type* actual) {
 Value* make_null(void) {
 	Value* v = malloc(sizeof(Value));
 	v->type = make_basic(BASIC_NULL);
+	v->declared_type = NULL;
 	v->u.i = 0;
 	return v;
 }

@@ -811,7 +811,8 @@ Value* builtin_string_is_float(Value** args, int n) {
 
 Value* builtin_type_of(Value** args, int n) {
 	if (n < 1 || !args[0]) return make_string("null");
-	char* s = type_to_string(args[0]->type);
+	Type* t = args[0]->declared_type ? args[0]->declared_type : args[0]->type;
+	char* s = type_to_string(t);
 	Value* result = make_string(s);
 	free(s);
 	return result;

@@ -239,6 +239,54 @@ static void compile_sequence_discard(Compiler* c, AST* body) {
 	}
 }
 
+/* Infer the type of a simple return expression given lambda param info. */
+static Type* infer_expr_type_for_ret(AST* expr, char** pnames, Type** ptypes,
+                                     int pc) {
+	if (!expr) return make_basic(BASIC_NULL);
+	if (expr->kind == AST_LITERAL) return expr->u.literal.type;
+	if (expr->kind == AST_VAR_REF && pnames && ptypes) {
+		for (int i = 0; i < pc; i++)
+			if (strcmp(expr->u.var_ref, pnames[i]) == 0) return ptypes[i];
+	}
+	return NULL;
+}
+
+static void add_unique_type(Type*** out, int* cnt, Type* t) {
+	for (int i = 0; i < *cnt; i++)
+		if (type_equals((*out)[i], t)) return;
+	*out = realloc(*out, sizeof(Type*) * (size_t)(*cnt + 1));
+	(*out)[(*cnt)++] = t;
+}
+
+/* Walk AST collecting types from all return statements. */
+static void collect_ret_types(AST* node, char** pnames, Type** ptypes, int pc,
+                               Type*** out, int* cnt) {
+	if (!node) return;
+	switch (node->kind) {
+	case AST_RETURN: {
+		Type* t = infer_expr_type_for_ret(node->u.return_stmt.expr, pnames,
+                                          ptypes, pc);
+		if (t) add_unique_type(out, cnt, t);
+		break;
+	}
+	case AST_IF:
+		collect_ret_types(node->u.if_stmt.then_branch, pnames, ptypes, pc, out,
+                          cnt);
+		collect_ret_types(node->u.if_stmt.else_branch, pnames, ptypes, pc, out,
+                          cnt);
+		break;
+	case AST_PROGRAM:
+		for (int i = 0; i < node->u.program.body_count; i++)
+			collect_ret_types(node->u.program.body[i], pnames, ptypes, pc, out,
+                              cnt);
+		break;
+	case AST_WHILE:
+		collect_ret_types(node->u.while_stmt.body, pnames, ptypes, pc, out, cnt);
+		break;
+	default: break;
+	}
+}
+
 /* Compile lambda AST into a new sub-chunk. */
 static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 	Chunk* sub = chunk_new();
@@ -246,6 +294,23 @@ static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 	sub->source_col = ast->col;
 	sub->param_count = ast->u.lambda.param_count;
 	sub->ret_type = ast->u.lambda.ret_type;
+
+	/* Infer return type as union when no explicit annotation is given. */
+	if (!sub->ret_type) {
+		Type** rtypes = NULL;
+		int rcount = 0;
+		for (int i = 0; i < ast->u.lambda.body_count; i++)
+			collect_ret_types(ast->u.lambda.body[i],
+                              ast->u.lambda.param_names,
+                              ast->u.lambda.param_types,
+                              ast->u.lambda.param_count,
+                              &rtypes, &rcount);
+		if (rcount == 1)
+			sub->ret_type = rtypes[0];
+		else if (rcount > 1)
+			sub->ret_type = make_union(rtypes, rcount);
+		free(rtypes);
+	}
 
 	if (sub->param_count > 0) {
 		sub->param_names = malloc((size_t)sub->param_count * sizeof(char*));

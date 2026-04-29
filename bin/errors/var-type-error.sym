@@ -3,6 +3,9 @@ import { console } from "symbol"
 var main = (args: string[]) {
     var foo: int = 42.0 // Должно получить ошибку
     var bar: float = 42 // Должно принять
+
+    var baz = 42
+    var zoo = 42.0
 }
 
 main([])

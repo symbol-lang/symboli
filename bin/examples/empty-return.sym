@@ -1,7 +1,7 @@
 
 import { console } from "symbol"
 
-var main: null (args: string[]) = (args: string[]) {
+var main: null (string[]) = (args: string[]) {
     console.writeln("Empty Return")
     return
 }

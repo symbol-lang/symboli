@@ -736,6 +736,10 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					goto vm_error;
 				}
 
+				/* Store inferred/declared return type so type.of() reflects the
+			   union without overwriting the concrete type used for runtime ops. */
+				if (ret_type) retval->declared_type = ret_type;
+
 				Env* saved = CH->subs ? NULL : NULL; /* silence warning */
 				saved = FRAME->saved_env;
 				vm->frame_count--;

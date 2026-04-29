@@ -1,0 +1,13 @@
+import { system, console, type } from "symbol"
+
+var foo = (first: string, second: bool = false) {
+    if (second == false) return null
+
+    return first
+}
+
+var check = foo("bar")
+console.writeln("check type:", type.of(check))
+if (check) system.quit(0)
+check = foo("zoo", true)
+console.writeln("check:", check)
