@@ -1,5 +1,7 @@
-var fibonacciIterative: (n: int) = (n: int) {
-    if(n < 0) {
+import { console, system } from "symbol"
+
+var fibonacciIterative: (int) = (n: int) {
+    if (n < 0) {
         console.writeln("No negative values please!")
         system.quit(1)
     }

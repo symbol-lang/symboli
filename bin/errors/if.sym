@@ -1,6 +1,6 @@
 import { console } from "symbol"
 
-var main: () = {
+var main = () {
     var foo: bool = false
     // var bar: float = 420.0
 

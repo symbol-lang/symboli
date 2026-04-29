@@ -1,0 +1,19 @@
+import { console } from "symbol"
+// /*
+import { array  } from "symbol"
+// */
+
+const varArgs: null = (...args: any[]) {
+    const n = array.length(args)
+    for (var i = 0; i < n; i++) {
+        const arg = args[i]
+        console.write(arg)
+    }
+    console.write("\n")
+}
+
+
+varArgs("This ", "is ", "a ", "test! ", 42)
+
+// export { }
+// export { console }

@@ -596,85 +596,83 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 
 				int provided = n;
 				int total = cl->chunk->param_count;
+				int is_var = cl->chunk->is_variadic;
+				int regular = is_var ? total - 1 : total;
 
-				if (provided > total) {
+				char func_loc[64] = "";
+				if (cl->chunk->source_line)
+					snprintf(func_loc, sizeof(func_loc),
+					         " (function defined at %d:%d)",
+					         cl->chunk->source_line, cl->chunk->source_col);
+
+				if (!is_var && provided > total) {
 					free(args);
-					char func_loc[64] = "";
-					if (cl->chunk->source_line)
-						snprintf(func_loc,
-								 sizeof(func_loc),
-								 " (function defined at %d:%d)",
-								 cl->chunk->source_line,
-								 cl->chunk->source_col);
-					vm_error(vm,
-							 ch,
-							 IP,
-							 "Type error: function%s expected at most %d "
-							 "argument(s), got %d",
-							 func_loc,
-							 total,
-							 provided);
+					vm_error(vm, ch, IP,
+					         "Type error: function%s expected at most %d "
+					         "argument(s), got %d",
+					         func_loc, total, provided);
+					goto vm_error;
+				}
+				if (is_var && provided < regular) {
+					free(args);
+					vm_error(vm, ch, IP,
+					         "Type error: function%s expected at least %d "
+					         "argument(s), got %d",
+					         func_loc, regular, provided);
 					goto vm_error;
 				}
 
-				/* Build full argument list (fill defaults if needed) */
+				/* Build full argument list */
 				Value** full =
 					malloc((size_t)(total > 0 ? total : 1) * sizeof(Value*));
-				for (int i = 0; i < provided; i++)
-					full[i] = args[i];
-				free(args);
-				args = NULL;
 
-				for (int i = provided; i < total; i++) {
+				/* Regular (non-variadic) params */
+				for (int i = 0; i < regular && i < provided; i++)
+					full[i] = args[i];
+
+				/* Fill defaults for missing regular params */
+				for (int i = provided; i < regular; i++) {
 					if (!cl->chunk->param_defaults
 						|| !cl->chunk->param_defaults[i]) {
-						vm_error(
-							vm,
-							ch,
-							IP,
-							"Type error: missing argument for parameter '%s'",
-							cl->chunk->param_names[i]);
+						vm_error(vm, ch, IP,
+						         "Type error: missing argument for parameter '%s'",
+						         cl->chunk->param_names[i]);
 						free(full);
+						free(args);
 						goto vm_error;
 					}
-					/* Evaluate default in a temporary VM */
 					VM* tmp = vm_new();
 					tmp->env = vm->env;
 					tmp->filename = vm->filename;
 					Env* tmp_env = vm->env;
-					Value* dv =
-						vm_run(tmp, cl->chunk->param_defaults[i], &tmp_env);
+					Value* dv = vm_run(tmp, cl->chunk->param_defaults[i], &tmp_env);
 					vm_free(tmp);
-					if (!dv) {
-						free(full);
-						goto vm_error;
-					}
+					if (!dv) { free(full); free(args); goto vm_error; }
 					full[i] = dv;
 				}
 
-				/* Type-check provided args */
-				for (int i = 0; i < provided; i++) {
+				/* Pack extra args into array for variadic param */
+				if (is_var) {
+					Type* any_arr = make_array(make_basic(BASIC_ANY));
+					Value* var_arr = make_array_value(any_arr);
+					for (int i = regular; i < provided; i++)
+						array_push(var_arr, args[i]);
+					full[regular] = var_arr;
+				}
+
+				free(args);
+				args = NULL;
+
+				/* Type-check regular provided args */
+				for (int i = 0; i < regular && i < provided; i++) {
 					if (cl->chunk->param_types && cl->chunk->param_types[i]
 						&& !type_is_assignable(cl->chunk->param_types[i],
-											   full[i]->type)) {
+						                       full[i]->type)) {
 						char* exp = type_to_string(cl->chunk->param_types[i]);
 						char* got = type_to_string(full[i]->type);
-						char func_loc[64] = "";
-						if (cl->chunk->source_line)
-							snprintf(func_loc,
-									 sizeof(func_loc),
-									 " (function defined at %d:%d)",
-									 cl->chunk->source_line,
-									 cl->chunk->source_col);
-						vm_error(
-							vm,
-							ch,
-							IP,
-							"Type error: argument %d: expected %s, got %s%s",
-							i,
-							exp,
-							got,
-							func_loc);
+						vm_error(vm, ch, IP,
+						         "Type error: argument %d: expected %s, got %s%s",
+						         i, exp, got, func_loc);
 						free(exp);
 						free(got);
 						free(full);
@@ -1064,11 +1062,20 @@ Value* vm_call_value(VM* vm, Value* fn, Value** args, int n) {
 		return cl->builtin_fn(args, n);
 	}
 	int total = cl->chunk->param_count;
+	int is_var = cl->chunk->is_variadic;
+	int regular = is_var ? total - 1 : total;
 	Env* new_env = env_push_scope(cl->env);
 	if (cl->chunk->name) new_env = env_add(new_env, cl->chunk->name, fn);
-	int provided = n < total ? n : total;
+	int provided = n < regular ? n : regular;
 	for (int i = 0; i < provided; i++)
 		new_env = env_add(new_env, cl->chunk->param_names[i], args[i]);
+	if (is_var) {
+		Type* any_arr = make_array(make_basic(BASIC_ANY));
+		Value* var_arr = make_array_value(any_arr);
+		for (int i = regular; i < n; i++)
+			array_push(var_arr, args[i]);
+		new_env = env_add(new_env, cl->chunk->param_names[regular], var_arr);
+	}
 	VM* tmp = vm_new();
 	tmp->filename = vm ? vm->filename : NULL;
 	Value* result = vm_run(tmp, cl->chunk, &new_env);

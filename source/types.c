@@ -41,6 +41,13 @@ Type* make_array(Type* elem) {
 	return t;
 }
 
+Type* make_named(char* name) {
+	Type* t = malloc(sizeof(Type));
+	t->kind = TYPE_NAMED;
+	t->u.named = name;
+	return t;
+}
+
 Type* make_union(Type** types, int count) {
 	Type* t = malloc(sizeof(Type));
 	t->kind = TYPE_UNION;
@@ -72,6 +79,7 @@ Type* interface_field_type(const Type* type, const char* field_name) {
 int type_equals(const Type* left, const Type* right) {
 	if (left == right) return 1;
 	if (!left || !right) return 0;
+	if (left->kind == TYPE_NAMED || right->kind == TYPE_NAMED) return 1;
 	if (left->kind != right->kind) return 0;
 
 	if (left->kind == TYPE_BASIC) return left->u.basic == right->u.basic;
@@ -115,6 +123,7 @@ int type_equals(const Type* left, const Type* right) {
 int type_is_assignable(const Type* expected, const Type* actual) {
 	if (!expected || !actual) return 0;
 	if (type_equals(expected, actual)) return 1;
+	if (expected->kind == TYPE_NAMED || actual->kind == TYPE_NAMED) return 1;
 
 	if (expected->kind == TYPE_BASIC && expected->u.basic == BASIC_ANY)
 		return 1;
@@ -206,10 +215,12 @@ char* type_to_string(const Type* type) {
 	if (type->kind == TYPE_FUNC) {
 		char* ret =
 			type->u.func.ret ? type_to_string(type->u.func.ret) : dup_cstr("null");
+		int is_var = type->u.func.is_variadic;
 		size_t size = strlen(ret) + 4; /* " (" + ")" + NUL */
 		for (int i = 0; i < type->u.func.param_count; i++) {
 			char* param = type_to_string(type->u.func.params[i]);
 			size += strlen(param) + 2;
+			if (is_var && i + 1 == type->u.func.param_count) size += 3; /* "..." */
 			free(param);
 		}
 		char* result = malloc(size);
@@ -217,6 +228,7 @@ char* type_to_string(const Type* type) {
 		strcat(result, ret);
 		strcat(result, " (");
 		for (int i = 0; i < type->u.func.param_count; i++) {
+			if (is_var && i + 1 == type->u.func.param_count) strcat(result, "...");
 			char* param = type_to_string(type->u.func.params[i]);
 			strcat(result, param);
 			if (i + 1 < type->u.func.param_count) strcat(result, ", ");
@@ -226,6 +238,8 @@ char* type_to_string(const Type* type) {
 		free(ret);
 		return result;
 	}
+
+	if (type->kind == TYPE_NAMED) return dup_cstr(type->u.named);
 
 	if (type->kind == TYPE_INTERFACE) {
 		if (type->u.iface.name) return dup_cstr(type->u.iface.name);

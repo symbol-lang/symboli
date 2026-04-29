@@ -1,4 +1,4 @@
-import { console } from "symbol"
+import { console, type } from "symbol"
 
 enum IDirection {
     // По умолчанию это целые числа
@@ -11,6 +11,7 @@ enum IDirection {
 const dir: IDirection = IDirection.Right
 
 console.writeln("dir:", dir) // Должно вывести число
+console.writeln("dir:", type.of(dir)) // Должно вывести int
 
 enum IStatus {
     // Но можно задать их как строки
@@ -33,8 +34,12 @@ enum IEnum2 {
   E, // 3
 }
 
+var two:IEnum2 = IEnum2.D
+
 console.writeln(IEnum2.A) // 1
 console.writeln(IEnum2.B) // 2
 console.writeln(IEnum2.D) // foo
 console.writeln(IEnum2.C) // 2
 console.writeln(IEnum2.E) // 3
+console.writeln("IEnum2:", type.of(IEnum2)) // Должно вывести <object>
+console.writeln("two:", type.of(two)) // Должно вывести string

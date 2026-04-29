@@ -6,24 +6,16 @@ interface Animal {
     speak: ()
 }
 
-var greet: null (a: Animal) = (a: Animal) {
+var greet: null (Animal) = (a: Animal) {
     console.writeln(a.name)
     a.speak()
 }
 
 var dog = {
     name = "Rex",
-    speak: () = { // должно выдавать ошибку так как объявляется тип переменной
+    speak: () = () {
         console.writeln("Woof!")
     }
-    // должно быть так
-    /*
-    // Сначала объявляется тип переменной (если не указан значит ставится автоматически)
-    // Затем уже после = задается само значение (в нашем случае функция)
-    speak: null () = () = {
-        console.writeln("Woof!")
-    }
-    */
 }
 
 greet(dog)

@@ -23,6 +23,7 @@ typedef enum TypeKind {
 	TYPE_ARRAY     = 2,
 	TYPE_INTERFACE = 3,
 	TYPE_UNION     = 4,
+	TYPE_NAMED     = 5, /* named type alias, e.g. enum — behaves like any */
 } TypeKind;
 
 typedef struct Type {
@@ -33,6 +34,7 @@ typedef struct Type {
 			struct Type* ret;
 			struct Type** params;
 			int param_count;
+			int is_variadic; /* 1 if last param collects extra args as array */
 		} func;
 		struct {
 			struct Type* elem;
@@ -46,6 +48,7 @@ typedef struct Type {
 			struct Type** types;
 			int type_count;
 		} union_type;
+		char* named; /* TYPE_NAMED: the declared name (e.g. enum name) */
 	} u;
 } Type;
 
@@ -91,6 +94,7 @@ Type* make_func(Type* ret, Type** params, int pc);
 Type* make_array(Type* elem);
 Type* make_interface(char* name, InterfaceField* fields, int field_count);
 Type* make_union(Type** types, int count);
+Type* make_named(char* name);
 
 Type* interface_field_type(const Type* type, const char* field_name);
 

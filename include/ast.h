@@ -70,6 +70,7 @@ typedef struct AST {
 			struct Type** param_types;
 			struct AST** param_defaults;
 			int param_count;
+			int is_variadic; /* 1 if last param is ...name: type[] */
 			struct AST** body;
 			int body_count;
 		} lambda;

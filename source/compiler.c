@@ -293,6 +293,7 @@ static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 	sub->source_line = ast->line;
 	sub->source_col = ast->col;
 	sub->param_count = ast->u.lambda.param_count;
+	sub->is_variadic = ast->u.lambda.is_variadic;
 	sub->ret_type = ast->u.lambda.ret_type;
 
 	/* Infer return type as union when no explicit annotation is given. */
@@ -340,6 +341,7 @@ static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 
 	sub->func_type =
 		make_func(sub->ret_type, sub->param_types, sub->param_count);
+	sub->func_type->u.func.is_variadic = sub->is_variadic;
 
 	Compiler sub_c;
 	compiler_init(&sub_c, sub, parent->filename);

@@ -1,0 +1,4 @@
+import { console2 } from "./export-console.sym"
+// import { console } from "symbol"
+
+console2.writeln("exported console!")

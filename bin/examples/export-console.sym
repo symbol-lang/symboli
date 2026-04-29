@@ -1,0 +1,5 @@
+import { console } from "symbol"
+
+const console2 = console
+
+export { console2 }

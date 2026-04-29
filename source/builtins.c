@@ -891,13 +891,20 @@ Value* make_builtin_closure(VMBuiltinFn fn, Type* type) {
 
 Env* make_builtin_exports(void) {
 	// Console object
+	Type* any_arr_type = make_array(make_basic(BASIC_ANY));
+	Type** write_params = malloc(sizeof(Type*));
+	write_params[0] = any_arr_type;
+	Type* write_type = make_func(make_basic(BASIC_NULL), write_params, 1);
+	write_type->u.func.is_variadic = 1;
+	free(write_params);
+	Type* writeln_type = make_func(make_basic(BASIC_NULL), &any_arr_type, 1);
+	writeln_type->u.func.is_variadic = 1;
+
 	ObjectField* console_fields = malloc(4 * sizeof(ObjectField));
 	console_fields[0].name = strdup("write");
-	console_fields[0].value = make_builtin_closure(
-		builtin_console_write, make_func(make_basic(BASIC_NULL), NULL, 0));
+	console_fields[0].value = make_builtin_closure(builtin_console_write, write_type);
 	console_fields[1].name = strdup("writeln");
-	console_fields[1].value = make_builtin_closure(
-		builtin_console_writeln, make_func(make_basic(BASIC_NULL), NULL, 0));
+	console_fields[1].value = make_builtin_closure(builtin_console_writeln, writeln_type);
 	console_fields[2].name = strdup("read");
 	console_fields[2].value = make_builtin_closure(
 		builtin_console_read, make_func(make_basic(BASIC_STRING), NULL, 0));
@@ -906,9 +913,9 @@ Env* make_builtin_exports(void) {
 		builtin_console_readln, make_func(make_basic(BASIC_STRING), NULL, 0));
 	InterfaceField* console_iface_fields = malloc(4 * sizeof(InterfaceField));
 	console_iface_fields[0].name = strdup("write");
-	console_iface_fields[0].type = make_func(make_basic(BASIC_NULL), NULL, 0);
+	console_iface_fields[0].type = write_type;
 	console_iface_fields[1].name = strdup("writeln");
-	console_iface_fields[1].type = make_func(make_basic(BASIC_NULL), NULL, 0);
+	console_iface_fields[1].type = writeln_type;
 	console_iface_fields[2].name = strdup("read");
 	console_iface_fields[2].type = make_func(make_basic(BASIC_STRING), NULL, 0);
 	console_iface_fields[3].name = strdup("readln");

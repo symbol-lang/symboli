@@ -109,8 +109,14 @@ static void print_ast_json(AST* node) {
 					case BASIC_STRING:
 						printf("\"");
 						for (const char* p = node->u.literal.val.s; p && *p; p++) {
-							if (*p == '"' || *p == '\\') printf("\\");
-							printf("%c", *p);
+							switch (*p) {
+								case '"':  printf("\\\""); break;
+								case '\\': printf("\\\\"); break;
+								case '\n': printf("\\n");  break;
+								case '\r': printf("\\r");  break;
+								case '\t': printf("\\t");  break;
+								default:   printf("%c", *p); break;
+							}
 						}
 						printf("\"");
 						break;
@@ -194,10 +200,16 @@ static void print_ast_json(AST* node) {
 				printf(",\"ret_type\":\"%s\"", ts);
 				free(ts);
 			}
+			if (node->u.lambda.is_variadic)
+				printf(",\"is_variadic\":1");
 			printf(",\"params\":[");
 			for (int i = 0; i < node->u.lambda.param_count; i++) {
 				if (i > 0) printf(",");
-				printf("{\"name\":\"%s\"", node->u.lambda.param_names[i]);
+				int is_var_param = node->u.lambda.is_variadic
+				                   && i + 1 == node->u.lambda.param_count;
+				printf("{\"name\":\"%s%s\"",
+				       is_var_param ? "..." : "",
+				       node->u.lambda.param_names[i]);
 				if (node->u.lambda.param_types && node->u.lambda.param_types[i]) {
 					char* ts = type_to_string(node->u.lambda.param_types[i]);
 					printf(",\"type\":\"%s\"", ts);
@@ -267,13 +279,20 @@ static int collect_exports(AST* program, Env* env, Env** out_exports) {
 		AST* stmt = program->u.program.body[i];
 		if (stmt->kind != AST_EXPORT_DECL) continue;
 
+		if (stmt->u.export_decl.name_count == 0) {
+			fprintf(stderr,
+					"Syntax error at line %d, column %d: empty export\n",
+					stmt->line, stmt->col);
+			return 0;
+		}
+
 		for (int j = 0; j < stmt->u.export_decl.name_count; j++) {
 			const char* name = stmt->u.export_decl.names[j];
 			Value* value = env_get(env, (char*)name);
 			if (!value) {
 				fprintf(stderr,
-						"Runtime error: cannot export undefined '%s'\n",
-						name);
+						"Syntax error at line %d, column %d: cannot export undefined '%s'\n",
+						stmt->line, stmt->col, name);
 				return 0;
 			}
 			exports = env_add(exports, (char*)name, value);

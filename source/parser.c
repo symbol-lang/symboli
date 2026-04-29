@@ -15,6 +15,7 @@ typedef struct ParsedSignature {
 	Type** param_types;
 	AST** param_defaults;
 	int param_count;
+	int is_variadic;
 } ParsedSignature;
 
 typedef struct NamedType {
@@ -1451,17 +1452,25 @@ static AST* parse_number_literal(void) {
 }
 
 static void parse_param_list(char*** out_names, Type*** out_types,
-							 AST*** out_defaults, int* out_count) {
+							 AST*** out_defaults, int* out_count,
+							 int* out_is_variadic) {
 	*out_names = NULL;
 	*out_types = NULL;
 	*out_defaults = NULL;
 	*out_count = 0;
+	if (out_is_variadic) *out_is_variadic = 0;
 
 	if (!match("(")) return;
 	skip_ws();
 	if (match(")")) return;
 
 	while (pos < length) {
+		int is_var_param = 0;
+		if (starts_with("...")) {
+			pos += 3;
+			cur_col += 3;
+			is_var_param = 1;
+		}
 		char* name = parse_identifier();
 		Type* type = NULL;
 		AST* def = NULL;
@@ -1469,10 +1478,11 @@ static void parse_param_list(char*** out_names, Type*** out_types,
 		skip_ws();
 		if (match(":")) type = parse_type();
 		if (!type)
-			type =
-				make_basic(BASIC_ANY); /* unannotated param defaults to any */
+			type = is_var_param
+				       ? make_array(make_basic(BASIC_ANY))
+				       : make_basic(BASIC_ANY);
 		skip_ws();
-		if (starts_with("=") && !starts_with("==")) {
+		if (!is_var_param && starts_with("=") && !starts_with("==")) {
 			pos++;
 			def = parse_comparison();
 		}
@@ -1487,6 +1497,12 @@ static void parse_param_list(char*** out_names, Type*** out_types,
 		(*out_types)[*out_count] = type;
 		(*out_defaults)[*out_count] = def;
 		(*out_count)++;
+
+		if (is_var_param) {
+			if (out_is_variadic) *out_is_variadic = 1;
+			skip_ws();
+			break; /* variadic must be last */
+		}
 
 		skip_ws();
 		if (match(",")) continue;
@@ -1534,7 +1550,7 @@ static ParsedSignature parse_function_signature(void) {
 
 static AST* parse_lambda_body(char** param_names, Type** param_types,
 							  AST** param_defaults, int param_count,
-							  Type* ret_type) {
+							  int is_variadic, Type* ret_type) {
 	int lline = cur_line, lcol = cur_col;
 	if (!match("{")) return NULL;
 
@@ -1562,6 +1578,7 @@ static AST* parse_lambda_body(char** param_names, Type** param_types,
 	lambda->u.lambda.param_types = param_types;
 	lambda->u.lambda.param_defaults = param_defaults;
 	lambda->u.lambda.param_count = param_count;
+	lambda->u.lambda.is_variadic = is_variadic;
 	lambda->u.lambda.body = body;
 	lambda->u.lambda.body_count = body_count;
 	lambda->line = lline;
@@ -1576,7 +1593,9 @@ static AST* parse_lambda(void) {
 	AST** param_defaults = NULL;
 	int param_count = 0;
 
-	parse_param_list(&param_names, &param_types, &param_defaults, &param_count);
+	int is_variadic = 0;
+	parse_param_list(&param_names, &param_types, &param_defaults, &param_count,
+	                 &is_variadic);
 	skip_ws();
 	if (!starts_with("{")) {
 		pos = save;
@@ -1585,7 +1604,7 @@ static AST* parse_lambda(void) {
 		return NULL;
 	}
 	return parse_lambda_body(
-		param_names, param_types, param_defaults, param_count, NULL);
+		param_names, param_types, param_defaults, param_count, is_variadic, NULL);
 }
 
 static AST* parse_object_literal(void) {
@@ -1618,23 +1637,24 @@ static AST* parse_object_literal(void) {
 			skip_ws();
 
 			if (starts_with("(")) {
-				/* zoo: (params) = { body }  —  implicit null return type */
+				/* type annotation: name: (types) = lambda_expr */
 				char** pnames = NULL;
 				Type** ptypes = NULL;
 				AST** pdefs = NULL;
 				int pcount = 0;
-				parse_param_list(&pnames, &ptypes, &pdefs, &pcount);
+				int pvar = 0;
+				parse_param_list(&pnames, &ptypes, &pdefs, &pcount, &pvar);
 				skip_ws();
 				if (starts_with("=") && !starts_with("==")) {
 					match("=");
 					skip_ws();
 				}
 				if (starts_with("{")) {
-					value = parse_lambda_body(
-						pnames, ptypes, pdefs, pcount, make_basic(BASIC_NULL));
-				} else {
-					value = parse_expression();
+					parse_error(
+						"expected lambda expression after '=', not bare '{'; "
+						"use: name: () = () { body }");
 				}
+				value = parse_expression();
 			} else {
 				/* bar: type = expr  OR  baz: ret_type (params) = { body } */
 				Type* t = parse_union_type();
@@ -1645,7 +1665,8 @@ static AST* parse_object_literal(void) {
 					Type** ptypes = NULL;
 					AST** pdefs = NULL;
 					int pcount = 0;
-					parse_param_list(&pnames, &ptypes, &pdefs, &pcount);
+					int pvar = 0;
+					parse_param_list(&pnames, &ptypes, &pdefs, &pcount, &pvar);
 					skip_ws();
 					if (starts_with("=") && !starts_with("==")) {
 						match("=");
@@ -1653,7 +1674,7 @@ static AST* parse_object_literal(void) {
 					}
 					if (starts_with("{")) {
 						value =
-							parse_lambda_body(pnames, ptypes, pdefs, pcount, t);
+							parse_lambda_body(pnames, ptypes, pdefs, pcount, pvar, t);
 					} else {
 						value = parse_expression();
 					}
@@ -1852,13 +1873,14 @@ static AST* parse_primary(void) {
 			Type** ptypes = NULL;
 			AST** pdefs = NULL;
 			int pcount = 0;
-			parse_param_list(&pnames, &ptypes, &pdefs, &pcount);
+			int pvar = 0;
+			parse_param_list(&pnames, &ptypes, &pdefs, &pcount, &pvar);
 			skip_ws();
 			if (match("=>")
 				|| (starts_with("=") && !starts_with("==") && match("="))) {
 				skip_ws();
 				if (starts_with("{")) {
-					return parse_lambda_body(pnames, ptypes, pdefs, pcount, t);
+					return parse_lambda_body(pnames, ptypes, pdefs, pcount, pvar, t);
 				}
 			}
 		}
@@ -2026,10 +2048,13 @@ static AST* parse_unary(void) {
 static Type* infer_decl_type(AST* init) {
 	if (!init) return NULL;
 	switch (init->kind) {
-		case AST_LAMBDA:
-			return make_func(init->u.lambda.ret_type,
-							 init->u.lambda.param_types,
-							 init->u.lambda.param_count);
+		case AST_LAMBDA: {
+			Type* t = make_func(init->u.lambda.ret_type,
+			                    init->u.lambda.param_types,
+			                    init->u.lambda.param_count);
+			t->u.func.is_variadic = init->u.lambda.is_variadic;
+			return t;
+		}
 		case AST_LITERAL:
 			return init->u.literal.type;
 		case AST_STRING_INTERP:
@@ -2086,7 +2111,7 @@ static AST* parse_enum_decl(void) {
 	}
 	match("}");
 
-	register_named_type(name, make_basic(BASIC_ANY));
+	register_named_type(name, make_named(strdup(name)));
 
 	AST* ast = make_ast(AST_ENUM_DECL);
 	ast->u.enum_decl.name = name;
@@ -2245,10 +2270,11 @@ static AST* parse_expression(void) {
 			Type** ptypes = NULL;
 			AST** pdefs = NULL;
 			int pcount = 0;
-			parse_param_list(&pnames, &ptypes, &pdefs, &pcount);
+			int pvar = 0;
+			parse_param_list(&pnames, &ptypes, &pdefs, &pcount, &pvar);
 			skip_ws();
 			if (starts_with("{")) {
-				init = parse_lambda_body(pnames, ptypes, pdefs, pcount,
+				init = parse_lambda_body(pnames, ptypes, pdefs, pcount, pvar,
 										 sig.ret_type);
 			} else {
 				pos = save2;
