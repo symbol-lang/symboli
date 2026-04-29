@@ -324,7 +324,9 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					break;
 				}
 				if (l->type->kind != TYPE_BASIC
-					|| r->type->kind != TYPE_BASIC) {
+					|| r->type->kind != TYPE_BASIC
+					|| l->type->u.basic == BASIC_STRING
+					|| r->type->u.basic == BASIC_STRING) {
 					vm_error(
 						vm, ch, IP, "Type error: '+' expects numeric operands");
 					goto vm_error;
