@@ -19,12 +19,12 @@ typedef struct InterfaceField {
 } InterfaceField;
 
 typedef enum TypeKind {
-	TYPE_BASIC     = 0,
-	TYPE_FUNC      = 1,
-	TYPE_ARRAY     = 2,
+	TYPE_BASIC = 0,
+	TYPE_FUNC = 1,
+	TYPE_ARRAY = 2,
 	TYPE_INTERFACE = 3,
-	TYPE_UNION     = 4,
-	TYPE_NAMED     = 5, /* named type alias, e.g. enum — behaves like any */
+	TYPE_UNION = 4,
+	TYPE_NAMED = 5, /* named type alias, e.g. enum — behaves like any */
 } TypeKind;
 
 typedef struct Type {
@@ -35,7 +35,7 @@ typedef struct Type {
 			struct Type* ret;
 			struct Type** params;
 			int param_count;
-			int is_variadic;    /* 1 if any param is variadic */
+			int is_variadic;	/* 1 if any param is variadic */
 			int variadic_index; /* index of variadic param, -1 if none */
 		} func;
 		struct {
@@ -54,7 +54,7 @@ typedef struct Type {
 	} u;
 } Type;
 
-struct AST; // forward declaration
+struct AST;		// forward declaration
 struct Closure; // forward declaration (defined in vm.h)
 
 typedef struct ObjectField {
@@ -64,7 +64,8 @@ typedef struct ObjectField {
 
 typedef struct Value {
 	struct Type* type;
-	struct Type* declared_type; /* non-NULL when function return type is a union */
+	struct Type*
+		declared_type; /* non-NULL when function return type is a union */
 	union {
 		int b;
 		int64_t i;
@@ -112,13 +113,13 @@ Value* make_float(double f);
 Value* make_string(char* s);
 
 Value* make_array_value(Type* t);
-void   array_push(Value* arr, Value* elem);
+void array_push(Value* arr, Value* elem);
 
 Value* make_object(Type* type, ObjectField* fields, int field_count);
 Value* object_get_field(Value* object, const char* field_name);
-void   object_set_field(Value* object, const char* name, Value* val);
-void   object_delete_field(Value* object, const char* name);
-void   object_clear(Value* object);
+void object_set_field(Value* object, const char* name, Value* val);
+void object_delete_field(Value* object, const char* name);
+void object_clear(Value* object);
 char* value_to_string(const Value* value);
 
 Env* env_add(Env* env, char* name, Value* val);

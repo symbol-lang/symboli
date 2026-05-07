@@ -4,14 +4,14 @@
 #include "types.h"
 
 /* Binary operator codes (values above 255 to avoid ASCII clash) */
-#define BINARY_EQ      256
-#define BINARY_NEQ     257
-#define BINARY_LE      258
-#define BINARY_GE      259
-#define BINARY_AND     260
-#define BINARY_OR      261
-#define BINARY_SHL     262
-#define BINARY_SHR     263
+#define BINARY_EQ  256
+#define BINARY_NEQ 257
+#define BINARY_LE  258
+#define BINARY_GE  259
+#define BINARY_AND 260
+#define BINARY_OR  261
+#define BINARY_SHL 262
+#define BINARY_SHR 263
 /* single-char bitwise use ASCII: '&'=38, '|'=124, '^'=94 */
 
 /* Unary operator codes */
@@ -22,35 +22,35 @@
 #define UNARY_BIT_NOT  304
 
 typedef enum ASTKind {
-	AST_VAR_DECL       = 0,
-	AST_LAMBDA         = 1,
-	AST_CALL           = 2,
-	AST_LITERAL        = 3,
-	AST_VAR_REF        = 4,
-	AST_STRING_INTERP  = 5,
-	AST_PROGRAM        = 6,
+	AST_VAR_DECL = 0,
+	AST_LAMBDA = 1,
+	AST_CALL = 2,
+	AST_LITERAL = 3,
+	AST_VAR_REF = 4,
+	AST_STRING_INTERP = 5,
+	AST_PROGRAM = 6,
 	AST_INTERFACE_DECL = 7,
 	AST_OBJECT_LITERAL = 8,
-	AST_MEMBER_ACCESS  = 9,
-	AST_RETURN         = 10,
-	AST_BINARY         = 11,
-	AST_IMPORT_DECL    = 12,
-	AST_EXPORT_DECL    = 13,
-	AST_IF             = 14,
-	AST_WHILE          = 15,
-	AST_DO_WHILE       = 16,
-	AST_FOR            = 17,
-	AST_SWITCH         = 18,
-	AST_BREAK          = 19,
-	AST_ASSIGN         = 20,
-	AST_CONTINUE       = 26,
-	AST_UNARY          = 21,
-	AST_CONDITIONAL    = 22,
-	AST_ARRAY_LITERAL  = 23,
-	AST_INDEX_ACCESS   = 24,
-	AST_INDEX_ASSIGN   = 25,
-	AST_ENUM_DECL      = 27,
-	AST_MEMBER_ASSIGN  = 28,
+	AST_MEMBER_ACCESS = 9,
+	AST_RETURN = 10,
+	AST_BINARY = 11,
+	AST_IMPORT_DECL = 12,
+	AST_EXPORT_DECL = 13,
+	AST_IF = 14,
+	AST_WHILE = 15,
+	AST_DO_WHILE = 16,
+	AST_FOR = 17,
+	AST_SWITCH = 18,
+	AST_BREAK = 19,
+	AST_ASSIGN = 20,
+	AST_CONTINUE = 26,
+	AST_UNARY = 21,
+	AST_CONDITIONAL = 22,
+	AST_ARRAY_LITERAL = 23,
+	AST_INDEX_ACCESS = 24,
+	AST_INDEX_ASSIGN = 25,
+	AST_ENUM_DECL = 27,
+	AST_MEMBER_ASSIGN = 28,
 } ASTKind;
 
 typedef struct AST {
@@ -70,7 +70,7 @@ typedef struct AST {
 			struct Type** param_types;
 			struct AST** param_defaults;
 			int param_count;
-			int is_variadic;    /* 1 if any param is variadic */
+			int is_variadic;	/* 1 if any param is variadic */
 			int variadic_index; /* index of variadic param, -1 if none */
 			struct AST** body;
 			int body_count;
@@ -124,7 +124,7 @@ typedef struct AST {
 		} literal;
 		char* var_ref;
 		struct {
-			char* str;          /* template: ${0}, ${1}, ... markers */
+			char* str;			/* template: ${0}, ${1}, ... markers */
 			struct AST** exprs; /* parsed expression AST nodes       */
 			int expr_count;
 		} string_interp;

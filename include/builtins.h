@@ -21,9 +21,9 @@ extern const MemberEntry MEMBERS[];
 
 VMBuiltinFn builtin_lookup(const char* sentinel);
 
-void        builtin_set_error(const char* fmt, ...);
+void builtin_set_error(const char* fmt, ...);
 const char* builtin_get_error(void);
-void        builtin_clear_error(void);
+void builtin_clear_error(void);
 
 Value* builtin_console_write(Value** args, int n);
 Value* builtin_console_writeln(Value** args, int n);
@@ -86,6 +86,6 @@ Value* builtin_time_now(Value** args, int n);
 Value* builtin_time_sleep(Value** args, int n);
 
 Value* make_builtin_closure(VMBuiltinFn fn, Type* type);
-Env*   make_builtin_exports(void);
+Env* make_builtin_exports(void);
 
 #endif

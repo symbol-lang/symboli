@@ -34,36 +34,66 @@ static void print_ast_json(AST* node);
 
 static const char* kind_name(ASTKind k) {
 	switch (k) {
-		case AST_VAR_DECL: return "var_decl";
-		case AST_LAMBDA: return "lambda";
-		case AST_CALL: return "call";
-		case AST_LITERAL: return "literal";
-		case AST_VAR_REF: return "var_ref";
-		case AST_STRING_INTERP: return "string_interp";
-		case AST_PROGRAM: return "program";
-		case AST_INTERFACE_DECL: return "interface_decl";
-		case AST_OBJECT_LITERAL: return "object_literal";
-		case AST_MEMBER_ACCESS: return "member_access";
-		case AST_MEMBER_ASSIGN: return "member_assign";
-		case AST_RETURN: return "return";
-		case AST_BINARY: return "binary";
-		case AST_IMPORT_DECL: return "import";
-		case AST_EXPORT_DECL: return "export";
-		case AST_IF: return "if";
-		case AST_WHILE: return "while";
-		case AST_DO_WHILE: return "do_while";
-		case AST_FOR: return "for";
-		case AST_SWITCH: return "switch";
-		case AST_BREAK: return "break";
-		case AST_CONTINUE: return "continue";
-		case AST_ASSIGN: return "assign";
-		case AST_UNARY: return "unary";
-		case AST_CONDITIONAL: return "conditional";
-		case AST_ARRAY_LITERAL: return "array_literal";
-		case AST_INDEX_ACCESS: return "index_access";
-		case AST_INDEX_ASSIGN: return "index_assign";
-		case AST_ENUM_DECL: return "enum_decl";
-		default: return "unknown";
+		case AST_VAR_DECL:
+			return "var_decl";
+		case AST_LAMBDA:
+			return "lambda";
+		case AST_CALL:
+			return "call";
+		case AST_LITERAL:
+			return "literal";
+		case AST_VAR_REF:
+			return "var_ref";
+		case AST_STRING_INTERP:
+			return "string_interp";
+		case AST_PROGRAM:
+			return "program";
+		case AST_INTERFACE_DECL:
+			return "interface_decl";
+		case AST_OBJECT_LITERAL:
+			return "object_literal";
+		case AST_MEMBER_ACCESS:
+			return "member_access";
+		case AST_MEMBER_ASSIGN:
+			return "member_assign";
+		case AST_RETURN:
+			return "return";
+		case AST_BINARY:
+			return "binary";
+		case AST_IMPORT_DECL:
+			return "import";
+		case AST_EXPORT_DECL:
+			return "export";
+		case AST_IF:
+			return "if";
+		case AST_WHILE:
+			return "while";
+		case AST_DO_WHILE:
+			return "do_while";
+		case AST_FOR:
+			return "for";
+		case AST_SWITCH:
+			return "switch";
+		case AST_BREAK:
+			return "break";
+		case AST_CONTINUE:
+			return "continue";
+		case AST_ASSIGN:
+			return "assign";
+		case AST_UNARY:
+			return "unary";
+		case AST_CONDITIONAL:
+			return "conditional";
+		case AST_ARRAY_LITERAL:
+			return "array_literal";
+		case AST_INDEX_ACCESS:
+			return "index_access";
+		case AST_INDEX_ASSIGN:
+			return "index_assign";
+		case AST_ENUM_DECL:
+			return "enum_decl";
+		default:
+			return "unknown";
 	}
 }
 
@@ -74,7 +104,9 @@ static void print_ast_json(AST* node) {
 	}
 
 	printf("{\"kind\":\"%s\",\"line\":%d,\"col\":%d",
-		   kind_name(node->kind), node->line, node->col);
+		   kind_name(node->kind),
+		   node->line,
+		   node->col);
 
 	switch (node->kind) {
 		case AST_PROGRAM:
@@ -111,14 +143,27 @@ static void print_ast_json(AST* node) {
 						break;
 					case BASIC_STRING:
 						printf("\"");
-						for (const char* p = node->u.literal.val.s; p && *p; p++) {
+						for (const char* p = node->u.literal.val.s; p && *p;
+							 p++) {
 							switch (*p) {
-								case '"':  printf("\\\""); break;
-								case '\\': printf("\\\\"); break;
-								case '\n': printf("\\n");  break;
-								case '\r': printf("\\r");  break;
-								case '\t': printf("\\t");  break;
-								default:   printf("%c", *p); break;
+								case '"':
+									printf("\\\"");
+									break;
+								case '\\':
+									printf("\\\\");
+									break;
+								case '\n':
+									printf("\\n");
+									break;
+								case '\r':
+									printf("\\r");
+									break;
+								case '\t':
+									printf("\\t");
+									break;
+								default:
+									printf("%c", *p);
+									break;
 							}
 						}
 						printf("\"");
@@ -203,16 +248,16 @@ static void print_ast_json(AST* node) {
 				printf(",\"ret_type\":\"%s\"", ts);
 				free(ts);
 			}
-			if (node->u.lambda.is_variadic)
-				printf(",\"is_variadic\":1");
+			if (node->u.lambda.is_variadic) printf(",\"is_variadic\":1");
 			printf(",\"params\":[");
 			for (int i = 0; i < node->u.lambda.param_count; i++) {
 				if (i > 0) printf(",");
 				int is_var_param = node->u.lambda.variadic_index == i;
 				printf("{\"name\":\"%s%s\"",
-				       is_var_param ? "..." : "",
-				       node->u.lambda.param_names[i]);
-				if (node->u.lambda.param_types && node->u.lambda.param_types[i]) {
+					   is_var_param ? "..." : "",
+					   node->u.lambda.param_names[i]);
+				if (node->u.lambda.param_types
+					&& node->u.lambda.param_types[i]) {
 					char* ts = type_to_string(node->u.lambda.param_types[i]);
 					printf(",\"type\":\"%s\"", ts);
 					free(ts);
@@ -290,7 +335,8 @@ static int collect_exports(AST* program, Env* env, Env** out_exports) {
 		if (stmt->u.export_decl.name_count == 0) {
 			fprintf(stderr,
 					"Syntax error at line %d, column %d: empty export\n",
-					stmt->line, stmt->col);
+					stmt->line,
+					stmt->col);
 			return 0;
 		}
 
@@ -299,8 +345,11 @@ static int collect_exports(AST* program, Env* env, Env** out_exports) {
 			Value* value = env_get(env, (char*)name);
 			if (!value) {
 				fprintf(stderr,
-						"Syntax error at line %d, column %d: cannot export undefined '%s'\n",
-						stmt->line, stmt->col, name);
+						"Syntax error at line %d, column %d: cannot export "
+						"undefined '%s'\n",
+						stmt->line,
+						stmt->col,
+						name);
 				return 0;
 			}
 			exports = env_add(exports, (char*)name, value);
@@ -465,11 +514,9 @@ int main(int argc, char* argv[]) {
 			return 0;
 		} else if (strcmp(argv[i], "--dump-builtins") == 0)
 			dump_builtins_mode = 1;
-		else if (strcmp(argv[i], "--disasm") == 0 ||
-				   strcmp(argv[i], "-d") == 0)
+		else if (strcmp(argv[i], "--disasm") == 0 || strcmp(argv[i], "-d") == 0)
 			disasm_mode = 1;
-		else if (strcmp(argv[i], "--ast") == 0 ||
-				   strcmp(argv[i], "-a") == 0)
+		else if (strcmp(argv[i], "--ast") == 0 || strcmp(argv[i], "-a") == 0)
 			ast_mode = 1;
 		else if (!filename)
 			filename = argv[i];

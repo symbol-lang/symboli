@@ -151,13 +151,15 @@ int type_is_assignable(const Type* expected, const Type* actual) {
 
 	if (expected->kind == TYPE_FUNC && actual->kind == TYPE_FUNC) {
 		/* Always check parameter count first. */
-		if (expected->u.func.param_count != actual->u.func.param_count) return 0;
+		if (expected->u.func.param_count != actual->u.func.param_count)
+			return 0;
 		for (int i = 0; i < expected->u.func.param_count; i++) {
 			if (!type_is_assignable(expected->u.func.params[i],
 									actual->u.func.params[i]))
 				return 0;
 		}
-		/* Skip return-type check when either side has no explicit return type. */
+		/* Skip return-type check when either side has no explicit return type.
+		 */
 		if (!actual->u.func.ret || !expected->u.func.ret) return 1;
 		return type_is_assignable(expected->u.func.ret, actual->u.func.ret);
 	}
@@ -214,14 +216,15 @@ char* type_to_string(const Type* type) {
 	}
 
 	if (type->kind == TYPE_FUNC) {
-		char* ret =
-			type->u.func.ret ? type_to_string(type->u.func.ret) : dup_cstr("null");
+		char* ret = type->u.func.ret ? type_to_string(type->u.func.ret)
+									 : dup_cstr("null");
 		int is_var = type->u.func.is_variadic;
 		size_t size = strlen(ret) + 4; /* " (" + ")" + NUL */
 		for (int i = 0; i < type->u.func.param_count; i++) {
 			char* param = type_to_string(type->u.func.params[i]);
 			size += strlen(param) + 2;
-			if (is_var && i + 1 == type->u.func.param_count) size += 3; /* "..." */
+			if (is_var && i + 1 == type->u.func.param_count)
+				size += 3; /* "..." */
 			free(param);
 		}
 		char* result = malloc(size);
@@ -229,7 +232,8 @@ char* type_to_string(const Type* type) {
 		strcat(result, ret);
 		strcat(result, " (");
 		for (int i = 0; i < type->u.func.param_count; i++) {
-			if (is_var && i + 1 == type->u.func.param_count) strcat(result, "...");
+			if (is_var && i + 1 == type->u.func.param_count)
+				strcat(result, "...");
 			char* param = type_to_string(type->u.func.params[i]);
 			strcat(result, param);
 			if (i + 1 < type->u.func.param_count) strcat(result, ", ");

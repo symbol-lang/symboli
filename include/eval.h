@@ -1,8 +1,8 @@
 #ifndef EVAL_H
 #define EVAL_H
 
-#include "types.h"
 #include "ast.h"
+#include "types.h"
 
 Value* eval(AST* ast, Env** env);
 

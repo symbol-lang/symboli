@@ -441,7 +441,8 @@ static Type** parse_type_arg_list(int* out_count, int* out_is_variadic) {
 
 		int is_var_type = 0;
 		if (starts_with("...")) {
-			pos += 3; cur_col += 3;
+			pos += 3;
+			cur_col += 3;
 			is_var_type = 1;
 			skip_ws();
 		}
@@ -453,21 +454,31 @@ static Type** parse_type_arg_list(int* out_count, int* out_is_variadic) {
 			if (match(":")) {
 				cur_line = save_line;
 				cur_col = save_col;
-				parse_error("parameter name '%s' is not allowed in a type annotation — use just the type, e.g. '(int[])'",
+				parse_error("parameter name '%s' is not allowed in a type "
+							"annotation — use just the type, e.g. '(int[])'",
 							maybe_name);
 				free(maybe_name);
-				/* skip past the rest of this argument list to suppress cascading errors */
+				/* skip past the rest of this argument list to suppress
+				 * cascading errors */
 				int depth = 1;
 				while (pos < length && depth > 0) {
-					if (src[pos] == '(') depth++;
-					else if (src[pos] == ')') depth--;
+					if (src[pos] == '(')
+						depth++;
+					else if (src[pos] == ')')
+						depth--;
 					if (depth > 0) {
-						if (src[pos] == '\n') { cur_line++; cur_col = 1; }
-						else cur_col++;
+						if (src[pos] == '\n') {
+							cur_line++;
+							cur_col = 1;
+						} else
+							cur_col++;
 						pos++;
 					}
 				}
-				if (pos < length) { pos++; cur_col++; } /* consume ')' */
+				if (pos < length) {
+					pos++;
+					cur_col++;
+				} /* consume ')' */
 				return NULL;
 			} else {
 				pos = save;
@@ -487,7 +498,8 @@ static Type** parse_type_arg_list(int* out_count, int* out_is_variadic) {
 			if (out_is_variadic) *out_is_variadic = 1;
 			skip_ws();
 			if (starts_with(","))
-				parse_error("variadic type '...' must be the last type in a type annotation");
+				parse_error("variadic type '...' must be the last type in a "
+							"type annotation");
 			break;
 		}
 
@@ -1421,8 +1433,8 @@ static AST* parse_assign(void) {
 	cur_col = save_col;
 	AST* lhs = parse_conditional();
 	skip_ws();
-	if (lhs && lhs->kind == AST_MEMBER_ACCESS
-		&& starts_with("=") && !starts_with("==")) {
+	if (lhs && lhs->kind == AST_MEMBER_ACCESS && starts_with("=")
+		&& !starts_with("==")) {
 		pos++;
 		AST* value = parse_assign();
 		AST* ast = make_ast(AST_MEMBER_ASSIGN);
@@ -1497,13 +1509,17 @@ static void parse_param_list(char*** out_names, Type*** out_types,
 		skip_ws();
 		if (match(":")) {
 			skip_ws();
-			if (starts_with("...")) { pos += 3; cur_col += 3; is_var_param = 1; skip_ws(); }
+			if (starts_with("...")) {
+				pos += 3;
+				cur_col += 3;
+				is_var_param = 1;
+				skip_ws();
+			}
 			type = parse_type();
 		}
 		if (!type)
-			type = is_var_param
-				       ? make_array(make_basic(BASIC_ANY))
-				       : make_basic(BASIC_ANY);
+			type = is_var_param ? make_array(make_basic(BASIC_ANY))
+								: make_basic(BASIC_ANY);
 		skip_ws();
 		if (!is_var_param && starts_with("=") && !starts_with("==")) {
 			pos++;
@@ -1525,7 +1541,8 @@ static void parse_param_list(char*** out_names, Type*** out_types,
 			if (out_variadic_index) *out_variadic_index = *out_count - 1;
 			skip_ws();
 			if (starts_with(",") && !starts_with(")"))
-				parse_error("variadic parameter '...' must be the last parameter");
+				parse_error(
+					"variadic parameter '...' must be the last parameter");
 			break;
 		}
 
@@ -1620,8 +1637,11 @@ static AST* parse_lambda(void) {
 	int param_count = 0;
 
 	int is_variadic = -1;
-	parse_param_list(&param_names, &param_types, &param_defaults, &param_count,
-	                 &is_variadic);
+	parse_param_list(&param_names,
+					 &param_types,
+					 &param_defaults,
+					 &param_count,
+					 &is_variadic);
 	skip_ws();
 	if (!starts_with("{")) {
 		pos = save;
@@ -1629,8 +1649,12 @@ static AST* parse_lambda(void) {
 		cur_col = save_col;
 		return NULL;
 	}
-	return parse_lambda_body(
-		param_names, param_types, param_defaults, param_count, is_variadic, NULL);
+	return parse_lambda_body(param_names,
+							 param_types,
+							 param_defaults,
+							 param_count,
+							 is_variadic,
+							 NULL);
 }
 
 static AST* parse_object_literal(void) {
@@ -1699,8 +1723,8 @@ static AST* parse_object_literal(void) {
 						skip_ws();
 					}
 					if (starts_with("{")) {
-						value =
-							parse_lambda_body(pnames, ptypes, pdefs, pcount, pvar, t);
+						value = parse_lambda_body(
+							pnames, ptypes, pdefs, pcount, pvar, t);
 					} else {
 						value = parse_expression();
 					}
@@ -1906,7 +1930,8 @@ static AST* parse_primary(void) {
 				|| (starts_with("=") && !starts_with("==") && match("="))) {
 				skip_ws();
 				if (starts_with("{")) {
-					return parse_lambda_body(pnames, ptypes, pdefs, pcount, pvar, t);
+					return parse_lambda_body(
+						pnames, ptypes, pdefs, pcount, pvar, t);
 				}
 			}
 		}
@@ -2076,8 +2101,8 @@ static Type* infer_decl_type(AST* init) {
 	switch (init->kind) {
 		case AST_LAMBDA: {
 			Type* t = make_func(init->u.lambda.ret_type,
-			                    init->u.lambda.param_types,
-			                    init->u.lambda.param_count);
+								init->u.lambda.param_types,
+								init->u.lambda.param_count);
 			t->u.func.is_variadic = init->u.lambda.is_variadic;
 			t->u.func.variadic_index = init->u.lambda.variadic_index;
 			return t;
@@ -2154,7 +2179,8 @@ static AST* parse_interface_decl(void) {
 	InterfaceField* fields = NULL;
 	int field_count = 0;
 
-	// Pre-register with empty fields so self-referential types (e.g. `this: IAnimal`) resolve
+	// Pre-register with empty fields so self-referential types (e.g. `this:
+	// IAnimal`) resolve
 	Type* iface_type = make_interface(name, NULL, 0);
 	register_named_type(name, iface_type);
 
@@ -2302,8 +2328,8 @@ static AST* parse_expression(void) {
 			parse_param_list(&pnames, &ptypes, &pdefs, &pcount, &pvar);
 			skip_ws();
 			if (starts_with("{")) {
-				init = parse_lambda_body(pnames, ptypes, pdefs, pcount, pvar,
-										 sig.ret_type);
+				init = parse_lambda_body(
+					pnames, ptypes, pdefs, pcount, pvar, sig.ret_type);
 			} else {
 				pos = save2;
 				cur_line = save_line2;

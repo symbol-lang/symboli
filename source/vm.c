@@ -324,8 +324,7 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					vm_push(vm, v);
 					break;
 				}
-				if (l->type->kind != TYPE_BASIC
-					|| r->type->kind != TYPE_BASIC
+				if (l->type->kind != TYPE_BASIC || r->type->kind != TYPE_BASIC
 					|| l->type->u.basic == BASIC_STRING
 					|| r->type->u.basic == BASIC_STRING) {
 					vm_error(
@@ -599,49 +598,66 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 				int total = cl->chunk->param_count;
 				int variadic_idx = cl->chunk->variadic_index; /* -1 if none */
 				int regular_before = (variadic_idx >= 0) ? variadic_idx : total;
-				int regular_after  = (variadic_idx >= 0) ? (total - variadic_idx - 1) : 0;
+				int regular_after =
+					(variadic_idx >= 0) ? (total - variadic_idx - 1) : 0;
 				int regular = regular_before + regular_after;
 
 				char func_loc[64] = "";
 				if (cl->chunk->source_line)
-					snprintf(func_loc, sizeof(func_loc),
-					         " (function defined at %d:%d)",
-					         cl->chunk->source_line, cl->chunk->source_col);
+					snprintf(func_loc,
+							 sizeof(func_loc),
+							 " (function defined at %d:%d)",
+							 cl->chunk->source_line,
+							 cl->chunk->source_col);
 
 				if (variadic_idx < 0 && provided > total) {
 					free(args);
-					vm_error(vm, ch, IP,
-					         "Type error: function%s expected at most %d "
-					         "argument(s), got %d",
-					         func_loc, total, provided);
+					vm_error(vm,
+							 ch,
+							 IP,
+							 "Type error: function%s expected at most %d "
+							 "argument(s), got %d",
+							 func_loc,
+							 total,
+							 provided);
 					goto vm_error;
 				}
 				if (variadic_idx >= 0 && provided < regular_before) {
 					free(args);
-					vm_error(vm, ch, IP,
-					         "Type error: function%s expected at least %d "
-					         "argument(s), got %d",
-					         func_loc, regular, provided);
+					vm_error(vm,
+							 ch,
+							 IP,
+							 "Type error: function%s expected at least %d "
+							 "argument(s), got %d",
+							 func_loc,
+							 regular,
+							 provided);
 					goto vm_error;
 				}
 
 				/* Build full argument list */
 				Value** full =
 					malloc((size_t)(total > 0 ? total : 1) * sizeof(Value*));
-				memset(full, 0, (size_t)(total > 0 ? total : 1) * sizeof(Value*));
+				memset(
+					full, 0, (size_t)(total > 0 ? total : 1) * sizeof(Value*));
 
 				/* Params before variadic */
 				for (int i = 0; i < regular_before && i < provided; i++)
 					full[i] = args[i];
 
 				/* Fill defaults for missing pre-variadic params */
-				for (int i = (provided < regular_before ? provided : regular_before);
-				     i < regular_before; i++) {
+				for (int i = (provided < regular_before ? provided
+														: regular_before);
+					 i < regular_before;
+					 i++) {
 					if (!cl->chunk->param_defaults
 						|| !cl->chunk->param_defaults[i]) {
-						vm_error(vm, ch, IP,
-						         "Type error: missing argument for parameter '%s'",
-						         cl->chunk->param_names[i]);
+						vm_error(
+							vm,
+							ch,
+							IP,
+							"Type error: missing argument for parameter '%s'",
+							cl->chunk->param_names[i]);
 						free(full);
 						free(args);
 						goto vm_error;
@@ -650,9 +666,14 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					tmp->env = vm->env;
 					tmp->filename = vm->filename;
 					Env* tmp_env = vm->env;
-					Value* dv = vm_run(tmp, cl->chunk->param_defaults[i], &tmp_env);
+					Value* dv =
+						vm_run(tmp, cl->chunk->param_defaults[i], &tmp_env);
 					vm_free(tmp);
-					if (!dv) { free(full); free(args); goto vm_error; }
+					if (!dv) {
+						free(full);
+						free(args);
+						goto vm_error;
+					}
 					full[i] = dv;
 				}
 
@@ -670,9 +691,12 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					int fi = variadic_idx + 1 + i;
 					if (!cl->chunk->param_defaults
 						|| !cl->chunk->param_defaults[fi]) {
-						vm_error(vm, ch, IP,
-						         "Type error: missing argument for parameter '%s'",
-						         cl->chunk->param_names[fi]);
+						vm_error(
+							vm,
+							ch,
+							IP,
+							"Type error: missing argument for parameter '%s'",
+							cl->chunk->param_names[fi]);
 						free(full);
 						free(args);
 						goto vm_error;
@@ -681,9 +705,14 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					tmp->env = vm->env;
 					tmp->filename = vm->filename;
 					Env* tmp_env = vm->env;
-					Value* dv = vm_run(tmp, cl->chunk->param_defaults[fi], &tmp_env);
+					Value* dv =
+						vm_run(tmp, cl->chunk->param_defaults[fi], &tmp_env);
 					vm_free(tmp);
-					if (!dv) { free(full); free(args); goto vm_error; }
+					if (!dv) {
+						free(full);
+						free(args);
+						goto vm_error;
+					}
 					full[fi] = dv;
 				}
 
@@ -694,12 +723,18 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 				for (int i = 0; i < regular_before && i < provided; i++) {
 					if (cl->chunk->param_types && cl->chunk->param_types[i]
 						&& !type_is_assignable(cl->chunk->param_types[i],
-						                       full[i]->type)) {
+											   full[i]->type)) {
 						char* exp = type_to_string(cl->chunk->param_types[i]);
 						char* got = type_to_string(full[i]->type);
-						vm_error(vm, ch, IP,
-						         "Type error: argument %d: expected %s, got %s%s",
-						         i, exp, got, func_loc);
+						vm_error(
+							vm,
+							ch,
+							IP,
+							"Type error: argument %d: expected %s, got %s%s",
+							i,
+							exp,
+							got,
+							func_loc);
 						free(exp);
 						free(got);
 						free(full);
@@ -762,7 +797,8 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 				}
 
 				/* Store inferred/declared return type so type.of() reflects the
-			   union without overwriting the concrete type used for runtime ops. */
+			   union without overwriting the concrete type used for runtime ops.
+			 */
 				if (ret_type) retval->declared_type = ret_type;
 
 				Env* saved = CH->subs ? NULL : NULL; /* silence warning */
@@ -785,8 +821,11 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 				Value* obj = vm_pop(vm);
 				const char* mem = ch->names[inst.a];
 				if (!obj || obj->type->kind != TYPE_INTERFACE) {
-					vm_error(vm, ch, IP,
-							 "Runtime error: member assign on non-object value");
+					vm_error(
+						vm,
+						ch,
+						IP,
+						"Runtime error: member assign on non-object value");
 					goto vm_error;
 				}
 				object_set_field(obj, mem, val);
@@ -913,15 +952,22 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					if (expected->kind == TYPE_INTERFACE) {
 						char* reason =
 							type_assignability_error(expected, v->type);
-						vm_error(vm, ch, IP,
+						vm_error(vm,
+								 ch,
+								 IP,
 								 "Type error: value does not satisfy interface "
 								 "%s: %s",
-								 exp, reason);
+								 exp,
+								 reason);
 						free(reason);
 					} else {
 						char* got = type_to_string(v->type);
-						vm_error(vm, ch, IP,
-								 "Type error: expected %s, got %s", exp, got);
+						vm_error(vm,
+								 ch,
+								 IP,
+								 "Type error: expected %s, got %s",
+								 exp,
+								 got);
 						free(got);
 					}
 					free(exp);
@@ -959,13 +1005,13 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 				}
 				int64_t i = idx->u.i;
 				if (i < 0 || i >= obj->u.arr.len) {
-					vm_error(
-						vm,
-						ch,
-						IP,
-						"Runtime error: array index %" PRId64 " out of bounds (len %d)",
-						i,
-						obj->u.arr.len);
+					vm_error(vm,
+							 ch,
+							 IP,
+							 "Runtime error: array index %" PRId64
+							 " out of bounds (len %d)",
+							 i,
+							 obj->u.arr.len);
 					goto vm_error;
 				}
 				vm_push(vm, obj->u.arr.data[i]);
@@ -994,13 +1040,13 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 				}
 				int64_t i = idx->u.i;
 				if (i < 0 || i >= obj->u.arr.len) {
-					vm_error(
-						vm,
-						ch,
-						IP,
-						"Runtime error: array index %" PRId64 " out of bounds (len %d)",
-						i,
-						obj->u.arr.len);
+					vm_error(vm,
+							 ch,
+							 IP,
+							 "Runtime error: array index %" PRId64
+							 " out of bounds (len %d)",
+							 i,
+							 obj->u.arr.len);
 					goto vm_error;
 				}
 				/* Type-check assignment against declared element type */
@@ -1101,7 +1147,8 @@ Value* vm_call_value(VM* vm, Value* fn, Value** args, int n) {
 		Value* var_arr = make_array_value(any_arr);
 		for (int i = regular_before; i < n; i++)
 			array_push(var_arr, args[i]);
-		new_env = env_add(new_env, cl->chunk->param_names[variadic_idx], var_arr);
+		new_env =
+			env_add(new_env, cl->chunk->param_names[variadic_idx], var_arr);
 	}
 	VM* tmp = vm_new();
 	tmp->filename = vm ? vm->filename : NULL;

@@ -243,7 +243,7 @@ static void compile_sequence_discard(Compiler* c, AST* body) {
 
 /* Infer the type of a simple return expression given lambda param info. */
 static Type* infer_expr_type_for_ret(AST* expr, char** pnames, Type** ptypes,
-                                     int pc) {
+									 int pc) {
 	if (!expr) return make_basic(BASIC_NULL);
 	if (expr->kind == AST_LITERAL) return expr->u.literal.type;
 	if (expr->kind == AST_VAR_REF && pnames && ptypes) {
@@ -262,30 +262,32 @@ static void add_unique_type(Type*** out, int* cnt, Type* t) {
 
 /* Walk AST collecting types from all return statements. */
 static void collect_ret_types(AST* node, char** pnames, Type** ptypes, int pc,
-                               Type*** out, int* cnt) {
+							  Type*** out, int* cnt) {
 	if (!node) return;
 	switch (node->kind) {
-	case AST_RETURN: {
-		Type* t = infer_expr_type_for_ret(node->u.return_stmt.expr, pnames,
-                                          ptypes, pc);
-		if (t) add_unique_type(out, cnt, t);
-		break;
-	}
-	case AST_IF:
-		collect_ret_types(node->u.if_stmt.then_branch, pnames, ptypes, pc, out,
-                          cnt);
-		collect_ret_types(node->u.if_stmt.else_branch, pnames, ptypes, pc, out,
-                          cnt);
-		break;
-	case AST_PROGRAM:
-		for (int i = 0; i < node->u.program.body_count; i++)
-			collect_ret_types(node->u.program.body[i], pnames, ptypes, pc, out,
-                              cnt);
-		break;
-	case AST_WHILE:
-		collect_ret_types(node->u.while_stmt.body, pnames, ptypes, pc, out, cnt);
-		break;
-	default: break;
+		case AST_RETURN: {
+			Type* t = infer_expr_type_for_ret(
+				node->u.return_stmt.expr, pnames, ptypes, pc);
+			if (t) add_unique_type(out, cnt, t);
+			break;
+		}
+		case AST_IF:
+			collect_ret_types(
+				node->u.if_stmt.then_branch, pnames, ptypes, pc, out, cnt);
+			collect_ret_types(
+				node->u.if_stmt.else_branch, pnames, ptypes, pc, out, cnt);
+			break;
+		case AST_PROGRAM:
+			for (int i = 0; i < node->u.program.body_count; i++)
+				collect_ret_types(
+					node->u.program.body[i], pnames, ptypes, pc, out, cnt);
+			break;
+		case AST_WHILE:
+			collect_ret_types(
+				node->u.while_stmt.body, pnames, ptypes, pc, out, cnt);
+			break;
+		default:
+			break;
 	}
 }
 
@@ -294,20 +296,21 @@ static int has_return(AST* node) {
 	if (!node) return 0;
 	if (node->kind == AST_RETURN) return 1;
 	switch (node->kind) {
-	case AST_PROGRAM:
-		for (int i = 0; i < node->u.program.body_count; i++)
-			if (has_return(node->u.program.body[i])) return 1;
-		break;
-	case AST_IF:
-		return has_return(node->u.if_stmt.then_branch)
-			|| has_return(node->u.if_stmt.else_branch);
-	case AST_WHILE:
-		return has_return(node->u.while_stmt.body);
-	case AST_FOR:
-		return has_return(node->u.for_stmt.body);
-	case AST_DO_WHILE:
-		return has_return(node->u.do_while_stmt.body);
-	default: break;
+		case AST_PROGRAM:
+			for (int i = 0; i < node->u.program.body_count; i++)
+				if (has_return(node->u.program.body[i])) return 1;
+			break;
+		case AST_IF:
+			return has_return(node->u.if_stmt.then_branch)
+				   || has_return(node->u.if_stmt.else_branch);
+		case AST_WHILE:
+			return has_return(node->u.while_stmt.body);
+		case AST_FOR:
+			return has_return(node->u.for_stmt.body);
+		case AST_DO_WHILE:
+			return has_return(node->u.do_while_stmt.body);
+		default:
+			break;
 	}
 	return 0;
 }
@@ -328,10 +331,11 @@ static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 		int rcount = 0;
 		for (int i = 0; i < ast->u.lambda.body_count; i++)
 			collect_ret_types(ast->u.lambda.body[i],
-                              ast->u.lambda.param_names,
-                              ast->u.lambda.param_types,
-                              ast->u.lambda.param_count,
-                              &rtypes, &rcount);
+							  ast->u.lambda.param_names,
+							  ast->u.lambda.param_types,
+							  ast->u.lambda.param_count,
+							  &rtypes,
+							  &rcount);
 		if (rcount == 1)
 			sub->ret_type = rtypes[0];
 		else if (rcount > 1)
@@ -343,14 +347,19 @@ static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 	if (sub->ret_type) {
 		int body_has_ret = 0;
 		for (int i = 0; i < ast->u.lambda.body_count; i++)
-			if (has_return(ast->u.lambda.body[i])) { body_has_ret = 1; break; }
+			if (has_return(ast->u.lambda.body[i])) {
+				body_has_ret = 1;
+				break;
+			}
 		if (!body_has_ret) {
 			char* rts = type_to_string(sub->ret_type);
 			fprintf(stderr,
 					"%s:%d:%d: error: missing return statement in function "
 					"with return type '%s'\n",
 					parent->filename ? parent->filename : "",
-					ast->line, ast->col, rts);
+					ast->line,
+					ast->col,
+					rts);
 			free(rts);
 		}
 	}
@@ -362,10 +371,12 @@ static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 		for (int i = 0; i < sub->param_count; i++) {
 			sub->param_names[i] = strdup(ast->u.lambda.param_names[i]);
 			sub->param_types[i] = ast->u.lambda.param_types[i];
-			if (ast->u.lambda.param_defaults && ast->u.lambda.param_defaults[i]) {
+			if (ast->u.lambda.param_defaults
+				&& ast->u.lambda.param_defaults[i]) {
 				Chunk* def_ch =
 					compile(ast->u.lambda.param_defaults[i], parent->filename);
-				/* Propagate array elem type into default chunk (mirrors var decl) */
+				/* Propagate array elem type into default chunk (mirrors var
+				 * decl) */
 				Type* pt = ast->u.lambda.param_types
 							   ? ast->u.lambda.param_types[i]
 							   : NULL;
@@ -408,7 +419,8 @@ static void compile_node(Compiler* c, AST* ast) {
 		case AST_VAR_DECL: {
 			if (ast->u.var_decl.init
 				&& ast->u.var_decl.init->kind == AST_LAMBDA) {
-				/* Propagate annotated param types into unannotated lambda params */
+				/* Propagate annotated param types into unannotated lambda
+				 * params */
 				Type* vt = ast->u.var_decl.vartype;
 				if (vt && vt->kind == TYPE_FUNC) {
 					AST* lam = ast->u.var_decl.init;
@@ -419,13 +431,15 @@ static void compile_node(Compiler* c, AST* ast) {
 						if (lam->u.lambda.param_types
 							&& lam->u.lambda.param_types[i]
 							&& lam->u.lambda.param_types[i]->kind == TYPE_BASIC
-							&& lam->u.lambda.param_types[i]->u.basic == BASIC_ANY
+							&& lam->u.lambda.param_types[i]->u.basic
+								   == BASIC_ANY
 							&& vt->u.func.params[i])
 							lam->u.lambda.param_types[i] = vt->u.func.params[i];
 					}
 					if (vt->u.func.is_variadic && !lam->u.lambda.is_variadic) {
 						lam->u.lambda.is_variadic = 1;
-						lam->u.lambda.variadic_index = vt->u.func.param_count - 1;
+						lam->u.lambda.variadic_index =
+							vt->u.func.param_count - 1;
 					}
 					/* Propagate declared return type so compile_lambda can
 					 * check for a missing return statement. */
@@ -582,7 +596,8 @@ static void compile_node(Compiler* c, AST* ast) {
 
 			EMIT(OP_PUSH_SCOPE, 0, 0);
 
-			/* Define each member in order so later members can reference earlier ones */
+			/* Define each member in order so later members can reference
+			 * earlier ones */
 			int counter = 0;
 			for (int i = 0; i < n; i++) {
 				AST* mv = ast->u.enum_decl.member_values[i];
@@ -599,7 +614,8 @@ static void compile_node(Compiler* c, AST* ast) {
 					EMIT(OP_CONST, ci, 0);
 					counter++;
 				}
-				int ni = chunk_add_name(c->chunk, ast->u.enum_decl.member_names[i]);
+				int ni =
+					chunk_add_name(c->chunk, ast->u.enum_decl.member_names[i]);
 				EMIT(OP_DEF_CONST, ni, 0);
 				EMIT(OP_POP, 0, 0);
 			}
@@ -613,7 +629,8 @@ static void compile_node(Compiler* c, AST* ast) {
 			int ti = chunk_add_objtmpl(c->chunk, tmpl);
 
 			for (int i = 0; i < n; i++) {
-				int ni = chunk_add_name(c->chunk, ast->u.enum_decl.member_names[i]);
+				int ni =
+					chunk_add_name(c->chunk, ast->u.enum_decl.member_names[i]);
 				EMIT(OP_GET, ni, 0);
 			}
 			EMIT(OP_MAKE_OBJ, ti, 0);
