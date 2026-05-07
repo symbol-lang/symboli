@@ -1,0 +1,8 @@
+import { time, console } from "symbol"
+
+var t1 = time.now()
+time.sleep(4) // 1 second
+var t2 = time.now()
+
+var result = (t2 - t1)
+console.writeln("result:", result)

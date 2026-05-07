@@ -28,7 +28,7 @@ console.writeln("Array:")
 console.writeln(arr)
 
 // Функция, принимающая union
-var process: null (input: int | string) = (input: int | string) {
+var process: null (int | string) = (input: int | string) {
     console.writeln("Received:")
     console.writeln(input)
 }
@@ -36,7 +36,7 @@ var process: null (input: int | string) = (input: int | string) {
 process(100)
 process("test")
 
-// должно выдать тип текущего значения 
+// должно выдать тип текущего значения
 // если это int, то "int"
 // если это string[], то "string[]"
 // сейчас же он почему-то дает "any[]"

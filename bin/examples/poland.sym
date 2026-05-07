@@ -3,17 +3,17 @@
 
 Проверяет:
 
-* стек
-* парсинг строк
-* обработку ошибок
-* структуры данных
+ * стек
+ * парсинг строк
+ * обработку ошибок
+ * структуры данных
 
 Пример:
 3 4 + 2 *
 
 Результат:
 14
-*/
+ */
 import { console, system } from "symbol"
 import { cast } from "symbol"
 import { string, array } from "symbol"
@@ -60,12 +60,12 @@ const evaluateRPN: (string) = (expression) {
         }
     }
 
-if (array.length(stack) != 1) {
-    console.writeln("Некорректное выражение")
-    system.quit(1)
-}
+    if (array.length(stack) != 1) {
+        console.writeln("Некорректное выражение")
+        system.quit(1)
+    }
 
-return stack[0]
+    return stack[0]
 }
 
 // Пример использования

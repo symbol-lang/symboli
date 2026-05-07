@@ -1,6 +1,6 @@
 import { console, string, array, struct } from "symbol"
 
-const countWords: (text: string) = (text: string) {
+const countWords: (string) = (text) {
     const frequencies = {}
     const words: string[] = string.split(string.trim(string.lowercase(text)), "\\s+")
 

@@ -66,6 +66,25 @@ Value* builtin_string_is_float(Value** args, int n);
 
 Value* builtin_type_of(Value** args, int n);
 
+Value* builtin_file_exist(Value** args, int n);
+Value* builtin_file_create(Value** args, int n);
+Value* builtin_file_delete(Value** args, int n);
+Value* builtin_file_open(Value** args, int n);
+Value* builtin_file_close(Value** args, int n);
+Value* builtin_file_move(Value** args, int n);
+Value* builtin_file_copy(Value** args, int n);
+Value* builtin_file_read(Value** args, int n);
+Value* builtin_file_write(Value** args, int n);
+Value* builtin_file_append(Value** args, int n);
+Value* builtin_file_read_bytes(Value** args, int n);
+Value* builtin_file_write_bytes(Value** args, int n);
+Value* builtin_file_eof(Value** args, int n);
+Value* builtin_file_size(Value** args, int n);
+Value* builtin_file_mkdir(Value** args, int n);
+
+Value* builtin_time_now(Value** args, int n);
+Value* builtin_time_sleep(Value** args, int n);
+
 Value* make_builtin_closure(VMBuiltinFn fn, Type* type);
 Env*   make_builtin_exports(void);
 

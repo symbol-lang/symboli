@@ -1,5 +1,6 @@
 #include "types.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -315,7 +316,7 @@ Value* make_bool(int b) {
 	return v;
 }
 
-Value* make_int(int i) {
+Value* make_int(int64_t i) {
 	Value* v = malloc(sizeof(Value));
 	v->type = make_basic(BASIC_INT);
 	v->u.i = i;
@@ -421,7 +422,7 @@ char* value_to_string(const Value* value) {
 				return dup_cstr(value->u.b ? "true" : "false");
 			case BASIC_INT: {
 				char buffer[32];
-				snprintf(buffer, sizeof(buffer), "%d", value->u.i);
+				snprintf(buffer, sizeof(buffer), "%" PRId64, value->u.i);
 				return dup_cstr(buffer);
 			}
 			case BASIC_FLOAT: {

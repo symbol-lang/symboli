@@ -2,6 +2,7 @@
 #include "builtins.h"
 #include "eval.h"
 
+#include <inttypes.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -331,7 +332,7 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 						vm, ch, IP, "Type error: '+' expects numeric operands");
 					goto vm_error;
 				}
-				int li = l->u.i, ri = r->u.i;
+				int64_t li = l->u.i, ri = r->u.i;
 				int both_int = l->type->u.basic == BASIC_INT
 							   && r->type->u.basic == BASIC_INT;
 				double lf =
@@ -351,7 +352,7 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 						vm, ch, IP, "Type error: '-' expects numeric operands");
 					goto vm_error;
 				}
-				int li = l->u.i, ri = r->u.i;
+				int64_t li = l->u.i, ri = r->u.i;
 				int both_int = l->type->u.basic == BASIC_INT
 							   && r->type->u.basic == BASIC_INT;
 				double lf =
@@ -374,7 +375,7 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					 "Type error: arithmetic operator expects numbers");       \
 			goto vm_error;                                                     \
 		}                                                                      \
-		int li = l->u.i, ri = r->u.i;                                          \
+		int64_t li = l->u.i, ri = r->u.i;                                      \
 		int both_int =                                                         \
 			l->type->u.basic == BASIC_INT && r->type->u.basic == BASIC_INT;    \
 		double lf = l->type->u.basic == BASIC_FLOAT ? l->u.f : (double)li;     \
@@ -482,7 +483,7 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					goto vm_error;
 				}
 				if (v->type->u.basic == BASIC_FLOAT)
-					vm_push(vm, make_int((int)v->u.f));
+					vm_push(vm, make_int((int64_t)v->u.f));
 				else if (v->type->u.basic == BASIC_BOOL)
 					vm_push(vm, make_int(v->u.b ? 1 : 0));
 				else
@@ -596,8 +597,10 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 
 				int provided = n;
 				int total = cl->chunk->param_count;
-				int is_var = cl->chunk->is_variadic;
-				int regular = is_var ? total - 1 : total;
+				int variadic_idx = cl->chunk->variadic_index; /* -1 if none */
+				int regular_before = (variadic_idx >= 0) ? variadic_idx : total;
+				int regular_after  = (variadic_idx >= 0) ? (total - variadic_idx - 1) : 0;
+				int regular = regular_before + regular_after;
 
 				char func_loc[64] = "";
 				if (cl->chunk->source_line)
@@ -605,7 +608,7 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					         " (function defined at %d:%d)",
 					         cl->chunk->source_line, cl->chunk->source_col);
 
-				if (!is_var && provided > total) {
+				if (variadic_idx < 0 && provided > total) {
 					free(args);
 					vm_error(vm, ch, IP,
 					         "Type error: function%s expected at most %d "
@@ -613,7 +616,7 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 					         func_loc, total, provided);
 					goto vm_error;
 				}
-				if (is_var && provided < regular) {
+				if (variadic_idx >= 0 && provided < regular_before) {
 					free(args);
 					vm_error(vm, ch, IP,
 					         "Type error: function%s expected at least %d "
@@ -625,13 +628,15 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 				/* Build full argument list */
 				Value** full =
 					malloc((size_t)(total > 0 ? total : 1) * sizeof(Value*));
+				memset(full, 0, (size_t)(total > 0 ? total : 1) * sizeof(Value*));
 
-				/* Regular (non-variadic) params */
-				for (int i = 0; i < regular && i < provided; i++)
+				/* Params before variadic */
+				for (int i = 0; i < regular_before && i < provided; i++)
 					full[i] = args[i];
 
-				/* Fill defaults for missing regular params */
-				for (int i = provided; i < regular; i++) {
+				/* Fill defaults for missing pre-variadic params */
+				for (int i = (provided < regular_before ? provided : regular_before);
+				     i < regular_before; i++) {
 					if (!cl->chunk->param_defaults
 						|| !cl->chunk->param_defaults[i]) {
 						vm_error(vm, ch, IP,
@@ -652,19 +657,41 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 				}
 
 				/* Pack extra args into array for variadic param */
-				if (is_var) {
+				if (variadic_idx >= 0) {
 					Type* any_arr = make_array(make_basic(BASIC_ANY));
 					Value* var_arr = make_array_value(any_arr);
-					for (int i = regular; i < provided; i++)
+					for (int i = regular_before; i < provided; i++)
 						array_push(var_arr, args[i]);
-					full[regular] = var_arr;
+					full[variadic_idx] = var_arr;
+				}
+
+				/* Post-variadic params: fill from defaults */
+				for (int i = 0; i < regular_after; i++) {
+					int fi = variadic_idx + 1 + i;
+					if (!cl->chunk->param_defaults
+						|| !cl->chunk->param_defaults[fi]) {
+						vm_error(vm, ch, IP,
+						         "Type error: missing argument for parameter '%s'",
+						         cl->chunk->param_names[fi]);
+						free(full);
+						free(args);
+						goto vm_error;
+					}
+					VM* tmp = vm_new();
+					tmp->env = vm->env;
+					tmp->filename = vm->filename;
+					Env* tmp_env = vm->env;
+					Value* dv = vm_run(tmp, cl->chunk->param_defaults[fi], &tmp_env);
+					vm_free(tmp);
+					if (!dv) { free(full); free(args); goto vm_error; }
+					full[fi] = dv;
 				}
 
 				free(args);
 				args = NULL;
 
-				/* Type-check regular provided args */
-				for (int i = 0; i < regular && i < provided; i++) {
+				/* Type-check non-variadic provided args */
+				for (int i = 0; i < regular_before && i < provided; i++) {
 					if (cl->chunk->param_types && cl->chunk->param_types[i]
 						&& !type_is_assignable(cl->chunk->param_types[i],
 						                       full[i]->type)) {
@@ -930,13 +957,13 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 							 "Runtime error: array index must be an integer");
 					goto vm_error;
 				}
-				int i = idx->u.i;
+				int64_t i = idx->u.i;
 				if (i < 0 || i >= obj->u.arr.len) {
 					vm_error(
 						vm,
 						ch,
 						IP,
-						"Runtime error: array index %d out of bounds (len %d)",
+						"Runtime error: array index %" PRId64 " out of bounds (len %d)",
 						i,
 						obj->u.arr.len);
 					goto vm_error;
@@ -965,13 +992,13 @@ Value* vm_run(VM* vm, Chunk* chunk, Env** env) {
 							 "Runtime error: index assign on non-array value");
 					goto vm_error;
 				}
-				int i = idx->u.i;
+				int64_t i = idx->u.i;
 				if (i < 0 || i >= obj->u.arr.len) {
 					vm_error(
 						vm,
 						ch,
 						IP,
-						"Runtime error: array index %d out of bounds (len %d)",
+						"Runtime error: array index %" PRId64 " out of bounds (len %d)",
 						i,
 						obj->u.arr.len);
 					goto vm_error;
@@ -1062,19 +1089,19 @@ Value* vm_call_value(VM* vm, Value* fn, Value** args, int n) {
 		return cl->builtin_fn(args, n);
 	}
 	int total = cl->chunk->param_count;
-	int is_var = cl->chunk->is_variadic;
-	int regular = is_var ? total - 1 : total;
+	int variadic_idx = cl->chunk->variadic_index; /* -1 if none */
+	int regular_before = (variadic_idx >= 0) ? variadic_idx : total;
 	Env* new_env = env_push_scope(cl->env);
 	if (cl->chunk->name) new_env = env_add(new_env, cl->chunk->name, fn);
-	int provided = n < regular ? n : regular;
+	int provided = n < regular_before ? n : regular_before;
 	for (int i = 0; i < provided; i++)
 		new_env = env_add(new_env, cl->chunk->param_names[i], args[i]);
-	if (is_var) {
+	if (variadic_idx >= 0) {
 		Type* any_arr = make_array(make_basic(BASIC_ANY));
 		Value* var_arr = make_array_value(any_arr);
-		for (int i = regular; i < n; i++)
+		for (int i = regular_before; i < n; i++)
 			array_push(var_arr, args[i]);
-		new_env = env_add(new_env, cl->chunk->param_names[regular], var_arr);
+		new_env = env_add(new_env, cl->chunk->param_names[variadic_idx], var_arr);
 	}
 	VM* tmp = vm_new();
 	tmp->filename = vm ? vm->filename : NULL;

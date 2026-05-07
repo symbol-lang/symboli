@@ -98,7 +98,8 @@ typedef struct Chunk {
     Type**         param_types;
     struct Chunk** param_defaults; /* NULL entry = no default for that param */
     int            param_count;
-    int            is_variadic; /* 1 if last param collects extra args as array */
+    int            is_variadic;    /* 1 if any param is variadic */
+    int            variadic_index; /* index of variadic param, -1 if none */
     Type*          ret_type;
     Type*          func_type; /* cached make_func result */
 } Chunk;

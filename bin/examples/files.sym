@@ -1,0 +1,16 @@
+import { file, console, type } from "symbol"
+
+const path = "text.txt"
+if (file.exist(path) == false) {
+    file.create(path)
+}
+
+// file.delete(path)
+
+// Выдает null если файла нету
+const f = file.open(path)
+// console.writeln("F type:", type.of(f))
+console.writeln("F type: ${type.of(f)}")
+file.close(f)
+
+file.move(path, "new/${path}")

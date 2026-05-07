@@ -1,0 +1,75 @@
+import { file, console, array } from "symbol"
+
+const func = () {
+    return 2
+}
+
+const fooo = func()
+
+interface IType {
+    func: int (), 
+}
+
+const ty: IType = {
+    func, 
+}
+
+ty.func()
+
+// exist + create
+const path = "test_output.txt"
+if (file.exist(path)) {
+    console.writeln("deleting:", path)
+    file.delete(path)
+}
+console.writeln("exist after delete:", file.exist(path))
+
+file.create(path)
+console.writeln("exist after create:", file.exist(path))
+
+const f = file.open(path)
+{
+    // write + read
+    file.write(f, "Hello, Symbol!")
+    const content = file.read(path)
+    console.writeln("read:", content)
+
+    // append
+    file.append(f, "\nLine 2")
+    const content2 = file.read(path)
+    console.writeln("after append:", content2)
+}
+file.close(f)
+
+{
+    // open + close
+    const f = file.open(path)
+    console.writeln("handle is null:", f == null)
+    if (f == null) {
+        console.writeln("heh, no file?")
+    } else {
+        // read_bytes + write_bytes
+        const bytes = file.read_bytes(f)
+        if (array.length(bytes) > 0)
+            console.writeln("byte[0]:", bytes[0])
+
+        file.write_bytes(f, [72, 101, 108, 108, 111])
+        const txt = file.read("test_bin.bin")
+        if (txt != null)
+            console.writeln("binary read:", txt)
+
+        file.close(f)
+    }
+}
+// mkdir + move + copy
+file.mkdir("testdir")
+file.copy(path, "testdir/copy.txt")
+console.writeln("copy exists:", file.exist("testdir/copy.txt"))
+file.move("testdir/copy.txt", "testdir/moved.txt")
+console.writeln("moved exists:", file.exist("testdir/moved.txt"))
+console.writeln("copy gone:", file.exist("testdir/copy.txt"))
+
+// cleanup
+file.delete(path)
+file.delete("test_bin.bin")
+file.delete("testdir/moved.txt")

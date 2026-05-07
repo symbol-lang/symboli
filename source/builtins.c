@@ -1,12 +1,17 @@
 #include "builtins.h"
 #include "vm.h"
 
+#include <inttypes.h>
 #include <ctype.h>
 #include <regex.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
 
 /* ── Builtin error channel ───────────────────────────────────── */
 
@@ -25,6 +30,31 @@ const char* builtin_get_error(void) {
 
 void builtin_clear_error(void) {
 	g_builtin_error[0] = '\0';
+}
+
+/* ── Time builtins ───────────────────────────────────────────── */
+
+Value* builtin_time_now(Value** args, int n) {
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	return make_float((double)ts.tv_sec + (double)ts.tv_nsec / 1e9);
+}
+
+Value* builtin_time_sleep(Value** args, int n) {
+	if (n < 1 || !args[0]) return make_null();
+	double secs = 0.0;
+	if (args[0]->type->kind == TYPE_BASIC) {
+		if (args[0]->type->u.basic == BASIC_INT)
+			secs = (double)args[0]->u.i;
+		else if (args[0]->type->u.basic == BASIC_FLOAT)
+			secs = args[0]->u.f;
+	}
+	if (secs <= 0.0) return make_null();
+	struct timespec ts;
+	ts.tv_sec  = (time_t)secs;
+	ts.tv_nsec = (long)((secs - (double)ts.tv_sec) * 1e9);
+	nanosleep(&ts, NULL);
+	return make_null();
 }
 
 /* ── Builtin functions ───────────────────────────────────────── */
@@ -146,7 +176,7 @@ Value* builtin_array_length(Value** args, int n) {
 Value* builtin_array_get(Value** args, int n) {
 	if (n < 2 || !args[0] || args[0]->type->kind != TYPE_ARRAY)
 		return make_null();
-	int i = args[1]->u.i;
+	int64_t i = args[1]->u.i;
 	if (i < 0 || i >= args[0]->u.arr.len) return make_null();
 	return args[0]->u.arr.data[i];
 }
@@ -154,7 +184,7 @@ Value* builtin_array_get(Value** args, int n) {
 Value* builtin_array_set(Value** args, int n) {
 	if (n < 3 || !args[0] || args[0]->type->kind != TYPE_ARRAY)
 		return make_null();
-	int i = args[1]->u.i;
+	int64_t i = args[1]->u.i;
 	if (i < 0 || i >= args[0]->u.arr.len) return make_null();
 	Type* elem_type = args[0]->type->u.array.elem;
 	if (!type_is_assignable(elem_type, args[2]->type)) {
@@ -354,7 +384,7 @@ static void json_val_to_string(SB* sb, Value* v) {
 				break;
 			case BASIC_INT: {
 				char tmp[32];
-				snprintf(tmp, sizeof(tmp), "%d", v->u.i);
+				snprintf(tmp, sizeof(tmp), "%" PRId64, v->u.i);
 				sb_str(sb, tmp);
 				break;
 			}
@@ -543,7 +573,7 @@ static Value* jp_parse(JP* jp) {
 		long long iv = strtoll(jp->src + jp->pos, &end, 10);
 		if (*end != '.' && *end != 'e' && *end != 'E') {
 			jp->pos = (size_t)(end - jp->src);
-			return make_int((int)iv);
+			return make_int(iv);
 		}
 		double fv = strtod(jp->src + jp->pos, &end);
 		jp->pos = (size_t)(end - jp->src);
@@ -602,9 +632,9 @@ Value* builtin_cast_to_int(Value** args, int n) {
 		case BASIC_INT:
 			return make_int(v->u.i);
 		case BASIC_FLOAT:
-			return make_int((int)v->u.f);
+			return make_int((int64_t)v->u.f);
 		case BASIC_STRING:
-			return make_int(v->u.s ? (int)strtol(v->u.s, NULL, 10) : 0);
+			return make_int(v->u.s ? strtoll(v->u.s, NULL, 10) : 0);
 		default:
 			return make_int(0);
 	}
@@ -842,6 +872,227 @@ Value* builtin_system_args(Value** args, int n) {
 	return arr;
 }
 
+/* ── File builtins ──────────────────────────────────────────── */
+
+#define MAX_FILE_HANDLES 256
+static FILE* g_file_handles[MAX_FILE_HANDLES];
+static int   g_file_handles_inited = 0;
+
+static void ensure_file_handles(void) {
+	if (!g_file_handles_inited) {
+		memset(g_file_handles, 0, sizeof(g_file_handles));
+		g_file_handles_inited = 1;
+	}
+}
+
+static int file_alloc_handle(FILE* fp) {
+	ensure_file_handles();
+	for (int i = 0; i < MAX_FILE_HANDLES; i++) {
+		if (!g_file_handles[i]) {
+			g_file_handles[i] = fp;
+			return i;
+		}
+	}
+	return -1;
+}
+
+static FILE* file_get_handle(int i) {
+	ensure_file_handles();
+	if (i < 0 || i >= MAX_FILE_HANDLES) return NULL;
+	return g_file_handles[i];
+}
+
+static void file_free_handle(int i) {
+	ensure_file_handles();
+	if (i >= 0 && i < MAX_FILE_HANDLES && g_file_handles[i]) {
+		fclose(g_file_handles[i]);
+		g_file_handles[i] = NULL;
+	}
+}
+
+Value* builtin_file_exist(Value** args, int n) {
+	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
+		|| args[0]->type->u.basic != BASIC_STRING)
+		return make_bool(0);
+	return make_bool(access(args[0]->u.s, F_OK) == 0);
+}
+
+Value* builtin_file_create(Value** args, int n) {
+	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
+		|| args[0]->type->u.basic != BASIC_STRING)
+		return make_null();
+	FILE* fp = fopen(args[0]->u.s, "ab");
+	if (fp) fclose(fp);
+	return make_null();
+}
+
+Value* builtin_file_delete(Value** args, int n) {
+	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
+		|| args[0]->type->u.basic != BASIC_STRING)
+		return make_null();
+	remove(args[0]->u.s);
+	return make_null();
+}
+
+Value* builtin_file_open(Value** args, int n) {
+	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
+		|| args[0]->type->u.basic != BASIC_STRING)
+		return make_null();
+	if (access(args[0]->u.s, F_OK) != 0) return make_null();
+	FILE* fp = fopen(args[0]->u.s, "r+b");
+	if (!fp) return make_null();
+	int h = file_alloc_handle(fp);
+	if (h < 0) { fclose(fp); return make_null(); }
+	return make_int(h);
+}
+
+Value* builtin_file_close(Value** args, int n) {
+	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
+		|| args[0]->type->u.basic != BASIC_INT)
+		return make_null();
+	file_free_handle(args[0]->u.i);
+	return make_null();
+}
+
+Value* builtin_file_move(Value** args, int n) {
+	if (n < 2 || !args[0] || !args[1]
+		|| args[0]->type->kind != TYPE_BASIC || args[0]->type->u.basic != BASIC_STRING
+		|| args[1]->type->kind != TYPE_BASIC || args[1]->type->u.basic != BASIC_STRING)
+		return make_null();
+	rename(args[0]->u.s, args[1]->u.s);
+	return make_null();
+}
+
+Value* builtin_file_copy(Value** args, int n) {
+	if (n < 2 || !args[0] || !args[1]
+		|| args[0]->type->kind != TYPE_BASIC || args[0]->type->u.basic != BASIC_STRING
+		|| args[1]->type->kind != TYPE_BASIC || args[1]->type->u.basic != BASIC_STRING)
+		return make_null();
+	FILE* src = fopen(args[0]->u.s, "rb");
+	if (!src) return make_null();
+	FILE* dst = fopen(args[1]->u.s, "wb");
+	if (!dst) { fclose(src); return make_null(); }
+	char buf[4096];
+	size_t nr;
+	while ((nr = fread(buf, 1, sizeof(buf), src)) > 0)
+		fwrite(buf, 1, nr, dst);
+	fclose(src);
+	fclose(dst);
+	return make_null();
+}
+
+Value* builtin_file_read(Value** args, int n) {
+	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
+		|| args[0]->type->u.basic != BASIC_STRING)
+		return make_null();
+	FILE* fp = fopen(args[0]->u.s, "rb");
+	if (!fp) return make_null();
+	fseek(fp, 0, SEEK_END);
+	long sz = ftell(fp);
+	rewind(fp);
+	char* buf = malloc((size_t)sz + 1);
+	size_t nr = fread(buf, 1, (size_t)sz, fp);
+	fclose(fp);
+	buf[nr] = '\0';
+	Value* result = make_string(buf);
+	free(buf);
+	return result;
+}
+
+Value* builtin_file_write(Value** args, int n) {
+	if (n < 2 || !args[0] || !args[1]
+		|| args[0]->type->kind != TYPE_BASIC || args[0]->type->u.basic != BASIC_INT
+		|| args[1]->type->kind != TYPE_BASIC || args[1]->type->u.basic != BASIC_STRING)
+		return make_null();
+	FILE* fp = file_get_handle(args[0]->u.i);
+	if (!fp) return make_null();
+	rewind(fp);
+	size_t len = strlen(args[1]->u.s);
+	fwrite(args[1]->u.s, 1, len, fp);
+	ftruncate(fileno(fp), (off_t)len);
+	fflush(fp);
+	return make_null();
+}
+
+Value* builtin_file_append(Value** args, int n) {
+	if (n < 2 || !args[0] || !args[1]
+		|| args[0]->type->kind != TYPE_BASIC || args[0]->type->u.basic != BASIC_INT
+		|| args[1]->type->kind != TYPE_BASIC || args[1]->type->u.basic != BASIC_STRING)
+		return make_null();
+	FILE* fp = file_get_handle(args[0]->u.i);
+	if (!fp) return make_null();
+	fseek(fp, 0, SEEK_END);
+	fwrite(args[1]->u.s, 1, strlen(args[1]->u.s), fp);
+	fflush(fp);
+	return make_null();
+}
+
+Value* builtin_file_read_bytes(Value** args, int n) {
+	Value* result = make_array_value(make_array(make_basic(BASIC_INT)));
+	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
+		|| args[0]->type->u.basic != BASIC_INT)
+		return result;
+	FILE* fp = file_get_handle(args[0]->u.i);
+	if (!fp) return result;
+	rewind(fp);
+	int c;
+	while ((c = fgetc(fp)) != EOF)
+		array_push(result, make_int(c));
+	return result;
+}
+
+Value* builtin_file_write_bytes(Value** args, int n) {
+	if (n < 2 || !args[0] || !args[1]
+		|| args[0]->type->kind != TYPE_BASIC || args[0]->type->u.basic != BASIC_INT
+		|| args[1]->type->kind != TYPE_ARRAY)
+		return make_null();
+	FILE* fp = file_get_handle(args[0]->u.i);
+	if (!fp) return make_null();
+	rewind(fp);
+	size_t count = 0;
+	for (int i = 0; i < args[1]->u.arr.len; i++) {
+		Value* v = args[1]->u.arr.data[i];
+		if (v && v->type->kind == TYPE_BASIC && v->type->u.basic == BASIC_INT) {
+			fputc((unsigned char)v->u.i, fp);
+			count++;
+		}
+	}
+	ftruncate(fileno(fp), (off_t)count);
+	fflush(fp);
+	return make_null();
+}
+
+Value* builtin_file_eof(Value** args, int n) {
+	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
+		|| args[0]->type->u.basic != BASIC_INT)
+		return make_bool(1);
+	FILE* fp = file_get_handle(args[0]->u.i);
+	if (!fp) return make_bool(1);
+	long cur = ftell(fp);
+	fseek(fp, 0, SEEK_END);
+	long end = ftell(fp);
+	fseek(fp, cur, SEEK_SET);
+	return make_bool(cur >= end);
+}
+
+Value* builtin_file_size(Value** args, int n) {
+	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
+		|| args[0]->type->u.basic != BASIC_STRING)
+		return make_int(-1);
+	struct stat st;
+	if (stat(args[0]->u.s, &st) != 0) return make_int(-1);
+	return make_int((int64_t)st.st_size);
+}
+
+Value* builtin_file_mkdir(Value** args, int n) {
+	if (n < 1 || !args[0] || args[0]->type->kind != TYPE_BASIC
+		|| args[0]->type->u.basic != BASIC_STRING)
+		return make_null();
+	mkdir(args[0]->u.s, 0755);
+	return make_null();
+}
+
+
 const BuiltinEntry BUILTINS[] = {
 	// console
 	{ "__builtin_console_writeln__", builtin_console_writeln },
@@ -868,6 +1119,9 @@ const BuiltinEntry BUILTINS[] = {
 	{ "__builtin_cast_to_string__",	builtin_cast_to_string  },
 	{ "__builtin_cast_to_int__",	 builtin_cast_to_int	 },
 	{ "__builtin_cast_to_float__",   builtin_cast_to_float	 },
+	// time
+	{ "__builtin_time_now__",        builtin_time_now        },
+	{ "__builtin_time_sleep__",      builtin_time_sleep      },
 	{ NULL,						  NULL					},
 };
 
@@ -1239,6 +1493,72 @@ Env* make_builtin_exports(void) {
 	Type* type_type = make_interface(NULL, type_iface_fields, 1);
 	Value* type_obj = make_object(type_type, type_fields, 1);
 
+	/* File object */
+	Type* str_fi = make_basic(BASIC_STRING);
+	Type* int_fi = make_basic(BASIC_INT);
+	Type* bool_fi = make_basic(BASIC_BOOL);
+	Type* null_fi = make_basic(BASIC_NULL);
+	Type* any_fi = make_basic(BASIC_ANY);
+	Type* int_arr_fi = make_array(make_basic(BASIC_INT));
+
+#define FILE_FIELD_COUNT 15
+	ObjectField*    fof = malloc(FILE_FIELD_COUNT * sizeof(ObjectField));
+	InterfaceField* fif = malloc(FILE_FIELD_COUNT * sizeof(InterfaceField));
+	int fofc = 0;
+
+#define FILE_FIELD(fname, fn, ret, params, pc)                              \
+	do {                                                                    \
+		fof[fofc].name  = strdup(fname);                                    \
+		fof[fofc].value = make_builtin_closure(fn, make_func(ret, params, pc)); \
+		fif[fofc].name  = strdup(fname);                                    \
+		fif[fofc].type  = fof[fofc].value->type;                            \
+		fofc++;                                                             \
+	} while (0)
+
+	{ Type* _p[] = { str_fi };             FILE_FIELD("exist",       builtin_file_exist,       bool_fi,    _p, 1); }
+	{ Type* _p[] = { str_fi };             FILE_FIELD("create",      builtin_file_create,      null_fi,    _p, 1); }
+	{ Type* _p[] = { str_fi };             FILE_FIELD("delete",      builtin_file_delete,      null_fi,    _p, 1); }
+	{ Type* _p[] = { str_fi };             FILE_FIELD("open",        builtin_file_open,        any_fi,     _p, 1); }
+	{ Type* _p[] = { int_fi };             FILE_FIELD("close",       builtin_file_close,       null_fi,    _p, 1); }
+	{ Type* _p[] = { str_fi, str_fi };     FILE_FIELD("move",        builtin_file_move,        null_fi,    _p, 2); }
+	{ Type* _p[] = { str_fi, str_fi };     FILE_FIELD("copy",        builtin_file_copy,        null_fi,    _p, 2); }
+	{ Type* _p[] = { str_fi };             FILE_FIELD("read",        builtin_file_read,        any_fi,     _p, 1); }
+	{ Type* _p[] = { int_fi, str_fi };     FILE_FIELD("write",       builtin_file_write,       null_fi,    _p, 2); }
+	{ Type* _p[] = { int_fi, str_fi };     FILE_FIELD("append",      builtin_file_append,      null_fi,    _p, 2); }
+	{ Type* _p[] = { int_fi };             FILE_FIELD("read_bytes",  builtin_file_read_bytes,  int_arr_fi, _p, 1); }
+	{ Type* _p[] = { int_fi, int_arr_fi }; FILE_FIELD("write_bytes", builtin_file_write_bytes, null_fi,    _p, 2); }
+	{ Type* _p[] = { int_fi };             FILE_FIELD("eof",         builtin_file_eof,         bool_fi,    _p, 1); }
+	{ Type* _p[] = { str_fi };             FILE_FIELD("size",        builtin_file_size,        int_fi,     _p, 1); }
+	{ Type* _p[] = { str_fi };             FILE_FIELD("mkdir",       builtin_file_mkdir,       null_fi,    _p, 1); }
+
+#undef FILE_FIELD
+
+	Type*  file_type = make_interface(NULL, fif, fofc);
+	Value* file_obj  = make_object(file_type, fof, fofc);
+
+	/* Time object: now, sleep */
+	Type* float_ti = make_basic(BASIC_FLOAT);
+	Type* null_ti  = make_basic(BASIC_NULL);
+	Type* any_ti   = make_basic(BASIC_ANY);
+
+	ObjectField*    tof = malloc(2 * sizeof(ObjectField));
+	InterfaceField* tif = malloc(2 * sizeof(InterfaceField));
+
+	tof[0].name  = strdup("now");
+	tof[0].value = make_builtin_closure(builtin_time_now, make_func(float_ti, NULL, 0));
+	tif[0].name  = strdup("now");
+	tif[0].type  = tof[0].value->type;
+
+	{ Type* _p[] = { any_ti };
+	  tof[1].name  = strdup("sleep");
+	  tof[1].value = make_builtin_closure(builtin_time_sleep, make_func(null_ti, _p, 1));
+	  tif[1].name  = strdup("sleep");
+	  tif[1].type  = tof[1].value->type;
+	}
+
+	Type*  time_type = make_interface(NULL, tif, 2);
+	Value* time_obj  = make_object(time_type, tof, 2);
+
 	Env* env = NULL;
 	env = env_add(env, "console", console_obj);
 	env = env_add(env, "system", system_obj);
@@ -1248,5 +1568,7 @@ Env* make_builtin_exports(void) {
 	env = env_add(env, "cast", cast_obj);
 	env = env_add(env, "string", string_obj);
 	env = env_add(env, "type", type_obj);
+	env = env_add(env, "file", file_obj);
+	env = env_add(env, "time", time_obj);
 	return env;
 }

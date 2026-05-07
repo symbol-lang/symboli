@@ -1,17 +1,21 @@
 import { type, console } from "symbol"
 
-var add: int (a: int, b: int) = (a: int, b: int) {
+var add: int (int, int) = (a: int, b: int) {
     return a + b
 }
 
+const sub: int | float (int | float, int | float) = (a, b) {
+    return a - b
+}
+
 enum Test {
-    FOO,
+    FOO, 
     BAR
 }
 
 // Должно выдать ошибку если сделать type.of
 interface ITest {
-    foo: int,
+    foo: int, 
     bar: string
 }
 
@@ -30,6 +34,7 @@ var main: () = () {
     console.writeln(type.of(nums))
 
     console.writeln(type.of(add))
+    console.writeln(type.of(sub))
 }
 
 main()

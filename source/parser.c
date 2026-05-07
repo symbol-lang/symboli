@@ -427,9 +427,10 @@ static Type* parse_named_or_basic_type(void) {
 	return type;
 }
 
-static Type** parse_type_arg_list(int* out_count) {
+static Type** parse_type_arg_list(int* out_count, int* out_is_variadic) {
 	Type** params = NULL;
 	*out_count = 0;
+	if (out_is_variadic) *out_is_variadic = 0;
 
 	if (!match("(")) return NULL;
 	skip_ws();
@@ -437,6 +438,14 @@ static Type** parse_type_arg_list(int* out_count) {
 
 	while (pos < length) {
 		Type* param = NULL;
+
+		int is_var_type = 0;
+		if (starts_with("...")) {
+			pos += 3; cur_col += 3;
+			is_var_type = 1;
+			skip_ws();
+		}
+
 		int save = pos, save_line = cur_line, save_col = cur_col;
 		char* maybe_name = parse_identifier();
 		if (maybe_name) {
@@ -473,6 +482,14 @@ static Type** parse_type_arg_list(int* out_count) {
 		params = realloc(params, sizeof(Type*) * (size_t)(*out_count + 1));
 		params[*out_count] = param;
 		(*out_count)++;
+
+		if (is_var_type) {
+			if (out_is_variadic) *out_is_variadic = 1;
+			skip_ws();
+			if (starts_with(","))
+				parse_error("variadic type '...' must be the last type in a type annotation");
+			break;
+		}
 
 		skip_ws();
 		if (match(",")) continue;
@@ -560,8 +577,10 @@ static Type* parse_type(void) {
 			type =
 				make_basic(BASIC_NULL); /* () shorthand: default return null */
 		int param_count = 0;
-		Type** params = parse_type_arg_list(&param_count);
+		int is_variadic = 0;
+		Type** params = parse_type_arg_list(&param_count, &is_variadic);
 		type = make_func(type, params, param_count);
+		type->u.func.is_variadic = is_variadic;
 	}
 
 	return type;
@@ -1447,18 +1466,18 @@ static AST* parse_number_literal(void) {
 	}
 
 	AST* ast = make_literal_ast(make_basic(BASIC_INT));
-	ast->u.literal.val.i = atoi(buffer);
+	ast->u.literal.val.i = strtoll(buffer, NULL, 10);
 	return ast;
 }
 
 static void parse_param_list(char*** out_names, Type*** out_types,
 							 AST*** out_defaults, int* out_count,
-							 int* out_is_variadic) {
+							 int* out_variadic_index) {
 	*out_names = NULL;
 	*out_types = NULL;
 	*out_defaults = NULL;
 	*out_count = 0;
-	if (out_is_variadic) *out_is_variadic = 0;
+	if (out_variadic_index) *out_variadic_index = -1;
 
 	if (!match("(")) return;
 	skip_ws();
@@ -1476,7 +1495,11 @@ static void parse_param_list(char*** out_names, Type*** out_types,
 		AST* def = NULL;
 		if (!name) break;
 		skip_ws();
-		if (match(":")) type = parse_type();
+		if (match(":")) {
+			skip_ws();
+			if (starts_with("...")) { pos += 3; cur_col += 3; is_var_param = 1; skip_ws(); }
+			type = parse_type();
+		}
 		if (!type)
 			type = is_var_param
 				       ? make_array(make_basic(BASIC_ANY))
@@ -1499,9 +1522,11 @@ static void parse_param_list(char*** out_names, Type*** out_types,
 		(*out_count)++;
 
 		if (is_var_param) {
-			if (out_is_variadic) *out_is_variadic = 1;
+			if (out_variadic_index) *out_variadic_index = *out_count - 1;
 			skip_ws();
-			break; /* variadic must be last */
+			if (starts_with(",") && !starts_with(")"))
+				parse_error("variadic parameter '...' must be the last parameter");
+			break;
 		}
 
 		skip_ws();
@@ -1542,7 +1567,7 @@ static ParsedSignature parse_function_signature(void) {
 	}
 
 	sig.is_function = 1;
-	sig.param_types = parse_type_arg_list(&sig.param_count);
+	sig.param_types = parse_type_arg_list(&sig.param_count, &sig.is_variadic);
 	sig.param_names = NULL;
 	sig.param_defaults = NULL;
 	return sig;
@@ -1550,7 +1575,7 @@ static ParsedSignature parse_function_signature(void) {
 
 static AST* parse_lambda_body(char** param_names, Type** param_types,
 							  AST** param_defaults, int param_count,
-							  int is_variadic, Type* ret_type) {
+							  int variadic_index, Type* ret_type) {
 	int lline = cur_line, lcol = cur_col;
 	if (!match("{")) return NULL;
 
@@ -1578,7 +1603,8 @@ static AST* parse_lambda_body(char** param_names, Type** param_types,
 	lambda->u.lambda.param_types = param_types;
 	lambda->u.lambda.param_defaults = param_defaults;
 	lambda->u.lambda.param_count = param_count;
-	lambda->u.lambda.is_variadic = is_variadic;
+	lambda->u.lambda.is_variadic = (variadic_index >= 0);
+	lambda->u.lambda.variadic_index = variadic_index;
 	lambda->u.lambda.body = body;
 	lambda->u.lambda.body_count = body_count;
 	lambda->line = lline;
@@ -1593,7 +1619,7 @@ static AST* parse_lambda(void) {
 	AST** param_defaults = NULL;
 	int param_count = 0;
 
-	int is_variadic = 0;
+	int is_variadic = -1;
 	parse_param_list(&param_names, &param_types, &param_defaults, &param_count,
 	                 &is_variadic);
 	skip_ws();
@@ -1642,7 +1668,7 @@ static AST* parse_object_literal(void) {
 				Type** ptypes = NULL;
 				AST** pdefs = NULL;
 				int pcount = 0;
-				int pvar = 0;
+				int pvar = -1;
 				parse_param_list(&pnames, &ptypes, &pdefs, &pcount, &pvar);
 				skip_ws();
 				if (starts_with("=") && !starts_with("==")) {
@@ -1665,7 +1691,7 @@ static AST* parse_object_literal(void) {
 					Type** ptypes = NULL;
 					AST** pdefs = NULL;
 					int pcount = 0;
-					int pvar = 0;
+					int pvar = -1;
 					parse_param_list(&pnames, &ptypes, &pdefs, &pcount, &pvar);
 					skip_ws();
 					if (starts_with("=") && !starts_with("==")) {
@@ -1873,7 +1899,7 @@ static AST* parse_primary(void) {
 			Type** ptypes = NULL;
 			AST** pdefs = NULL;
 			int pcount = 0;
-			int pvar = 0;
+			int pvar = -1;
 			parse_param_list(&pnames, &ptypes, &pdefs, &pcount, &pvar);
 			skip_ws();
 			if (match("=>")
@@ -2053,6 +2079,7 @@ static Type* infer_decl_type(AST* init) {
 			                    init->u.lambda.param_types,
 			                    init->u.lambda.param_count);
 			t->u.func.is_variadic = init->u.lambda.is_variadic;
+			t->u.func.variadic_index = init->u.lambda.variadic_index;
 			return t;
 		}
 		case AST_LITERAL:
@@ -2241,6 +2268,7 @@ static AST* parse_expression(void) {
 			if (sig.is_function) {
 				declared_type =
 					make_func(sig.ret_type, sig.param_types, sig.param_count);
+				declared_type->u.func.is_variadic = sig.is_variadic;
 			} else {
 				pos = save;
 				cur_line = save_line;
@@ -2270,7 +2298,7 @@ static AST* parse_expression(void) {
 			Type** ptypes = NULL;
 			AST** pdefs = NULL;
 			int pcount = 0;
-			int pvar = 0;
+			int pvar = -1;
 			parse_param_list(&pnames, &ptypes, &pdefs, &pcount, &pvar);
 			skip_ws();
 			if (starts_with("{")) {

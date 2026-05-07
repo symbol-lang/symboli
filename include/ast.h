@@ -70,7 +70,8 @@ typedef struct AST {
 			struct Type** param_types;
 			struct AST** param_defaults;
 			int param_count;
-			int is_variadic; /* 1 if last param is ...name: type[] */
+			int is_variadic;    /* 1 if any param is variadic */
+			int variadic_index; /* index of variadic param, -1 if none */
 			struct AST** body;
 			int body_count;
 		} lambda;
@@ -116,7 +117,7 @@ typedef struct AST {
 			struct Type* type;
 			union {
 				int b;
-				int i;
+				int64_t i;
 				double f;
 				char* s;
 			} val;

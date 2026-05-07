@@ -1,8 +1,8 @@
 import { console } from "symbol"
 
 interface ICallback {
-	callback: int (any),
-	name: string,
+	callback: int (any), 
+	name: string, 
 }
 
 const callback_1: int (any) = (props: any) {
@@ -16,7 +16,7 @@ const callback_2: int (any) = (props: any) {
 }
 
 const foo: ICallback = {
-	callback = callback_1,
+	callback = callback_1, 
 	name = "foo callback"
 }
 

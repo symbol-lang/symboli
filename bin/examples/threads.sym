@@ -1,0 +1,14 @@
+import { thread, time, console } from "symbol"
+
+// https://www.geeksforgeeks.org/python/multithreading-python-set-1/
+const square = (num) {
+    console.writeln("square:", num * num)
+    time.sleep(1)
+}
+
+// В thread.create передается функция, которая будет выполняться
+// а также ...args: any[]
+const t1 = thread.create(square, 4)
+
+t1.start()
+t1.join()

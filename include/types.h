@@ -1,6 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <stdint.h>
 #include <stdlib.h>
 
 typedef enum BasicType {
@@ -34,7 +35,8 @@ typedef struct Type {
 			struct Type* ret;
 			struct Type** params;
 			int param_count;
-			int is_variadic; /* 1 if last param collects extra args as array */
+			int is_variadic;    /* 1 if any param is variadic */
+			int variadic_index; /* index of variadic param, -1 if none */
 		} func;
 		struct {
 			struct Type* elem;
@@ -65,7 +67,7 @@ typedef struct Value {
 	struct Type* declared_type; /* non-NULL when function return type is a union */
 	union {
 		int b;
-		int i;
+		int64_t i;
 		double f;
 		char* s;
 		struct Closure* closure;
@@ -105,7 +107,7 @@ char* type_assignability_error(const Type* expected, const Type* actual);
 
 Value* make_null(void);
 Value* make_bool(int b);
-Value* make_int(int i);
+Value* make_int(int64_t i);
 Value* make_float(double f);
 Value* make_string(char* s);
 

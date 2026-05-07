@@ -1,18 +1,18 @@
 import { console } from "symbol"
 
 interface Animal {
-    name: string,
+    name: string, 
     // speak: null ()
     speak: ()
 }
 
-var greet: null (Animal) = (a: Animal) {
+const greet: null (Animal) = (a: Animal) {
     console.writeln(a.name)
     a.speak()
 }
 
 var dog = {
-    name = "Rex",
+    name = "Rex", 
     speak: () = () {
         console.writeln("Woof!")
     }

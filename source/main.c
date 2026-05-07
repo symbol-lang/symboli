@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +10,8 @@
 #include "parser.h"
 #include "types.h"
 #include "vm.h"
+
+void ast_propagate_types(AST* ast);
 
 typedef struct ModuleCache {
 	char* path;
@@ -101,7 +104,7 @@ static void print_ast_json(AST* node) {
 			if (node->u.literal.type->kind == TYPE_BASIC) {
 				switch (node->u.literal.type->u.basic) {
 					case BASIC_INT:
-						printf("%d", node->u.literal.val.i);
+						printf("%" PRId64, node->u.literal.val.i);
 						break;
 					case BASIC_FLOAT:
 						printf("%g", node->u.literal.val.f);
@@ -205,8 +208,7 @@ static void print_ast_json(AST* node) {
 			printf(",\"params\":[");
 			for (int i = 0; i < node->u.lambda.param_count; i++) {
 				if (i > 0) printf(",");
-				int is_var_param = node->u.lambda.is_variadic
-				                   && i + 1 == node->u.lambda.param_count;
+				int is_var_param = node->u.lambda.variadic_index == i;
 				printf("{\"name\":\"%s%s\"",
 				       is_var_param ? "..." : "",
 				       node->u.lambda.param_names[i]);
@@ -223,6 +225,12 @@ static void print_ast_json(AST* node) {
 				print_ast_json(node->u.lambda.body[i]);
 			}
 			printf("]");
+			break;
+
+		case AST_MEMBER_ACCESS:
+			printf(",\"object\":");
+			print_ast_json(node->u.member_access.object);
+			printf(",\"member\":\"%s\"", node->u.member_access.member);
 			break;
 
 		default:
@@ -403,13 +411,36 @@ static int execute_module(const char* module_path, ModuleCache** cache,
 	return 1;
 }
 
+static void dump_builtins(void) {
+	Env* exports = make_builtin_exports();
+	printf("{");
+	int first_mod = 1;
+	for (Env* e = exports; e; e = e->next) {
+		if (!e->name || !e->value) continue;
+		if (!first_mod) printf(",");
+		first_mod = 0;
+		printf("\"%s\":\"{ ", e->name);
+		Value* v = e->value;
+		for (int i = 0; i < v->u.object.field_count; i++) {
+			if (i > 0) printf(", ");
+			ObjectField* f = &v->u.object.fields[i];
+			char* ts = type_to_string(f->value->type);
+			printf("%s: %s", f->name, ts);
+			free(ts);
+		}
+		printf(" }\"");
+	}
+	printf("}\n");
+}
+
 static void print_help(const char* prog) {
 	printf("Usage: %s [options] <file>\n", prog);
 	printf("\n");
 	printf("Options:\n");
-	printf("  -h, --help     Show this help message\n");
-	printf("  -d, --disasm   Disassemble bytecode instead of running\n");
-	printf("  -a, --ast      Print abstract syntax tree as JSON\n");
+	printf("  -h, --help          Show this help message\n");
+	printf("  -d, --disasm        Disassemble bytecode instead of running\n");
+	printf("  -a, --ast           Print abstract syntax tree as JSON\n");
+	printf("  --dump-builtins     Print builtin type signatures as JSON\n");
 	printf("\n");
 	printf("Examples:\n");
 	printf("  %s script.sym\n", prog);
@@ -425,13 +456,16 @@ int main(int argc, char* argv[]) {
 
 	int disasm_mode = 0;
 	int ast_mode = 0;
+	int dump_builtins_mode = 0;
 	const char* filename = NULL;
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
 			print_help(argv[0]);
 			return 0;
-		} else if (strcmp(argv[i], "--disasm") == 0 ||
+		} else if (strcmp(argv[i], "--dump-builtins") == 0)
+			dump_builtins_mode = 1;
+		else if (strcmp(argv[i], "--disasm") == 0 ||
 				   strcmp(argv[i], "-d") == 0)
 			disasm_mode = 1;
 		else if (strcmp(argv[i], "--ast") == 0 ||
@@ -439,6 +473,11 @@ int main(int argc, char* argv[]) {
 			ast_mode = 1;
 		else if (!filename)
 			filename = argv[i];
+	}
+
+	if (dump_builtins_mode) {
+		dump_builtins();
+		return 0;
 	}
 
 	if (!filename) {
@@ -477,6 +516,7 @@ int main(int argc, char* argv[]) {
 			free(code);
 			return 1;
 		}
+		ast_propagate_types(program);
 		print_ast_json(program);
 		printf("\n");
 		free(code);

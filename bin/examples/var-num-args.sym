@@ -1,6 +1,6 @@
 import { console } from "symbol"
 // /*
-import { array  } from "symbol"
+import { array } from "symbol"
 // */
 
 const varArgs: null = (...args: any[]) {
@@ -11,7 +11,6 @@ const varArgs: null = (...args: any[]) {
     }
     console.write("\n")
 }
-
 
 varArgs("This ", "is ", "a ", "test! ", 42)
 

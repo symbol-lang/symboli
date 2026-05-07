@@ -7,7 +7,9 @@
 /* ── Chunk management ────────────────────────────────────────── */
 
 Chunk* chunk_new(void) {
-	return calloc(1, sizeof(Chunk));
+	Chunk* ch = calloc(1, sizeof(Chunk));
+	ch->variadic_index = -1;
+	return ch;
 }
 
 static void chunk_emit(Chunk* ch, uint8_t op, int32_t a, int32_t b, int line,
@@ -287,6 +289,29 @@ static void collect_ret_types(AST* node, char** pnames, Type** ptypes, int pc,
 	}
 }
 
+/* Recursively check whether a node contains any return statement. */
+static int has_return(AST* node) {
+	if (!node) return 0;
+	if (node->kind == AST_RETURN) return 1;
+	switch (node->kind) {
+	case AST_PROGRAM:
+		for (int i = 0; i < node->u.program.body_count; i++)
+			if (has_return(node->u.program.body[i])) return 1;
+		break;
+	case AST_IF:
+		return has_return(node->u.if_stmt.then_branch)
+			|| has_return(node->u.if_stmt.else_branch);
+	case AST_WHILE:
+		return has_return(node->u.while_stmt.body);
+	case AST_FOR:
+		return has_return(node->u.for_stmt.body);
+	case AST_DO_WHILE:
+		return has_return(node->u.do_while_stmt.body);
+	default: break;
+	}
+	return 0;
+}
+
 /* Compile lambda AST into a new sub-chunk. */
 static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 	Chunk* sub = chunk_new();
@@ -294,6 +319,7 @@ static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 	sub->source_col = ast->col;
 	sub->param_count = ast->u.lambda.param_count;
 	sub->is_variadic = ast->u.lambda.is_variadic;
+	sub->variadic_index = ast->u.lambda.variadic_index;
 	sub->ret_type = ast->u.lambda.ret_type;
 
 	/* Infer return type as union when no explicit annotation is given. */
@@ -311,6 +337,22 @@ static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 		else if (rcount > 1)
 			sub->ret_type = make_union(rtypes, rcount);
 		free(rtypes);
+	}
+
+	/* Error: non-void return type but no return statement in body. */
+	if (sub->ret_type) {
+		int body_has_ret = 0;
+		for (int i = 0; i < ast->u.lambda.body_count; i++)
+			if (has_return(ast->u.lambda.body[i])) { body_has_ret = 1; break; }
+		if (!body_has_ret) {
+			char* rts = type_to_string(sub->ret_type);
+			fprintf(stderr,
+					"%s:%d:%d: error: missing return statement in function "
+					"with return type '%s'\n",
+					parent->filename ? parent->filename : "",
+					ast->line, ast->col, rts);
+			free(rts);
+		}
 	}
 
 	if (sub->param_count > 0) {
@@ -342,6 +384,7 @@ static Chunk* compile_lambda(const Compiler* parent, AST* ast) {
 	sub->func_type =
 		make_func(sub->ret_type, sub->param_types, sub->param_count);
 	sub->func_type->u.func.is_variadic = sub->is_variadic;
+	sub->func_type->u.func.variadic_index = sub->variadic_index;
 
 	Compiler sub_c;
 	compiler_init(&sub_c, sub, parent->filename);
@@ -380,6 +423,14 @@ static void compile_node(Compiler* c, AST* ast) {
 							&& vt->u.func.params[i])
 							lam->u.lambda.param_types[i] = vt->u.func.params[i];
 					}
+					if (vt->u.func.is_variadic && !lam->u.lambda.is_variadic) {
+						lam->u.lambda.is_variadic = 1;
+						lam->u.lambda.variadic_index = vt->u.func.param_count - 1;
+					}
+					/* Propagate declared return type so compile_lambda can
+					 * check for a missing return statement. */
+					if (!lam->u.lambda.ret_type && vt->u.func.ret)
+						lam->u.lambda.ret_type = vt->u.func.ret;
 				}
 				Chunk* sub = compile_lambda(c, ast->u.var_decl.init);
 				sub->name = strdup(ast->u.var_decl.name);
@@ -955,6 +1006,48 @@ static void compile_node(Compiler* c, AST* ast) {
 		default:
 			EMIT(OP_NULL, 0, 0);
 			break;
+	}
+}
+
+/* Walk the AST and propagate declared function param types into unannotated
+ * lambda params. Used by --ast mode so the printed AST reflects inferred
+ * types the same way the compiler sees them. */
+void ast_propagate_types(AST* ast) {
+	if (!ast) return;
+	if (ast->kind == AST_PROGRAM) {
+		for (int i = 0; i < ast->u.program.body_count; i++)
+			ast_propagate_types(ast->u.program.body[i]);
+		return;
+	}
+	if (ast->kind == AST_VAR_DECL) {
+		if (ast->u.var_decl.init && ast->u.var_decl.init->kind == AST_LAMBDA) {
+			Type* vt = ast->u.var_decl.vartype;
+			if (vt && vt->kind == TYPE_FUNC) {
+				AST* lam = ast->u.var_decl.init;
+				int n = lam->u.lambda.param_count < vt->u.func.param_count
+							? lam->u.lambda.param_count
+							: vt->u.func.param_count;
+				for (int i = 0; i < n; i++) {
+					if (lam->u.lambda.param_types
+						&& lam->u.lambda.param_types[i]
+						&& lam->u.lambda.param_types[i]->kind == TYPE_BASIC
+						&& lam->u.lambda.param_types[i]->u.basic == BASIC_ANY
+						&& vt->u.func.params[i])
+						lam->u.lambda.param_types[i] = vt->u.func.params[i];
+				}
+				if (vt->u.func.is_variadic && !lam->u.lambda.is_variadic) {
+					lam->u.lambda.is_variadic = 1;
+					lam->u.lambda.variadic_index = vt->u.func.param_count - 1;
+				}
+			}
+			ast_propagate_types(ast->u.var_decl.init);
+		}
+		return;
+	}
+	if (ast->kind == AST_LAMBDA) {
+		for (int i = 0; i < ast->u.lambda.body_count; i++)
+			ast_propagate_types(ast->u.lambda.body[i]);
+		return;
 	}
 }
 

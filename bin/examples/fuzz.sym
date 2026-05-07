@@ -1,6 +1,6 @@
 import { system, console } from "symbol"
 
-var main: int (args: any[]) = (args: any[]) {
+var main: int (any[]) = (args: any[]) {
     console.writeln("Fuzz, buzz program: ${args}")
 
     var count = args[0]

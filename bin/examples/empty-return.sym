@@ -1,4 +1,3 @@
-
 import { console } from "symbol"
 
 var main: null (string[]) = (args: string[]) {

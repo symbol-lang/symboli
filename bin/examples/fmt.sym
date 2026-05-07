@@ -1,0 +1,8 @@
+import { console, array } from "symbol"
+
+const foo: (...any[]) = (args) {
+    console.writeln("foo(${array.length(args)}):")
+}
+
+foo()
+foo(1, 2, 3)
