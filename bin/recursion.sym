@@ -1,0 +1,5 @@
+import { foo } from "./recursion.sym"
+
+const foo = 42
+
+export { foo }

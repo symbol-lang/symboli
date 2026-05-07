@@ -19,6 +19,11 @@ typedef struct ModuleCache {
 	struct ModuleCache* next;
 } ModuleCache;
 
+typedef struct LoadingStack {
+	const char* path;
+	struct LoadingStack* next;
+} LoadingStack;
+
 static char* dup_cstr(const char* s) {
 	size_t len = strlen(s);
 	char* copy = malloc(len + 1);
@@ -361,19 +366,31 @@ static int collect_exports(AST* program, Env* env, Env** out_exports) {
 }
 
 static int execute_module(const char* module_path, ModuleCache** cache,
-						  Env** out_exports) {
+						  LoadingStack* loading, Env** out_exports) {
 	if (strcmp(module_path, "symbol") == 0) {
 		*out_exports = make_builtin_exports();
 		return 1;
 	}
 
-	ModuleCache* cached = find_module(*cache, module_path);
+	char canonical_buf[4096];
+	const char* canonical = realpath(module_path, canonical_buf);
+	if (!canonical) canonical = module_path;
+
+	for (LoadingStack* s = loading; s; s = s->next) {
+		if (strcmp(s->path, canonical) == 0) {
+			fprintf(stderr, "Import error: circular import detected for '%s'\n",
+					module_path);
+			return 0;
+		}
+	}
+
+	ModuleCache* cached = find_module(*cache, canonical);
 	if (cached) {
 		*out_exports = cached->exports;
 		return 1;
 	}
 
-	char* code = read_file(module_path);
+	char* code = read_file(canonical);
 	if (!code) {
 		fprintf(stderr, "Cannot read file %s\n", module_path);
 		return 0;
@@ -390,7 +407,9 @@ static int execute_module(const char* module_path, ModuleCache** cache,
 
 	Env* env = make_builtin_exports();
 	env = env_push_scope(env);
-	char* module_dir = dirname_of(module_path);
+	char* module_dir = dirname_of(canonical);
+
+	LoadingStack frame = {canonical, loading};
 
 	for (int i = 0; i < program->u.program.body_count; i++) {
 		AST* stmt = program->u.program.body[i];
@@ -405,7 +424,7 @@ static int execute_module(const char* module_path, ModuleCache** cache,
 				resolved_path =
 					join_path(module_dir, stmt->u.import_decl.source);
 
-			if (!execute_module(resolved_path, cache, &imported_exports)) {
+			if (!execute_module(resolved_path, cache, &frame, &imported_exports)) {
 				free(resolved_path);
 				free(module_dir);
 				free(code);
@@ -449,7 +468,7 @@ static int execute_module(const char* module_path, ModuleCache** cache,
 	}
 
 	ModuleCache* entry = malloc(sizeof(ModuleCache));
-	entry->path = dup_cstr(module_path);
+	entry->path = dup_cstr(canonical);
 	entry->exports = exports;
 	entry->next = *cache;
 	*cache = entry;
@@ -572,6 +591,6 @@ int main(int argc, char* argv[]) {
 
 	ModuleCache* cache = NULL;
 	Env* exports = NULL;
-	if (!execute_module(filename, &cache, &exports)) return 1;
+	if (!execute_module(filename, &cache, NULL, &exports)) return 1;
 	return 0;
 }
